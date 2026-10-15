@@ -33,7 +33,20 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - name: Check coverage
+
+  coverage:
+    name: Coverage (informational)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check coverage against 80% threshold
         run: |
           pnpm test:cov --coverageReporters=json-summary
           node -e "const pct = require('./coverage/coverage-summary.json').total.lines.pct; console.log('Total line coverage: ' + pct + '%'); if (pct < 80) { console.error('Coverage ' + pct + '% is below 80% threshold'); process.exit(1); }"
@@ -127,7 +140,3 @@ jobs:
               fi
             done
           fi
-      - name: Verify test coverage does not decrease
-        run: |
-          pnpm test:cov --coverageReporters=json-summary
-          node -e "const pct = require('./coverage/coverage-summary.json').total.lines.pct; console.log('Total line coverage: ' + pct + '%'); if (pct < 80) { console.error('Coverage ' + pct + '% is below 80% threshold'); process.exit(1); }"
