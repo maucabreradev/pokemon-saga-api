@@ -183,4 +183,24 @@ export class AuthService {
       .set({ revokedAt: new Date() })
       .where(eq(refreshTokens.tokenHash, tokenHash));
   }
+
+  async logoutAll(refreshToken: string): Promise<void> {
+    const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+
+    const [stored] = await this.db
+      .select({
+        userId: refreshTokens.userId,
+        expiresAt: refreshTokens.expiresAt,
+        revokedAt: refreshTokens.revokedAt,
+      })
+      .from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, tokenHash))
+      .limit(1);
+
+    if (!stored || stored.revokedAt || stored.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    await this.revokeAllForUser(stored.userId);
+  }
 }
