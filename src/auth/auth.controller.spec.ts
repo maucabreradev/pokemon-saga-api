@@ -115,14 +115,14 @@ describe('AuthController', () => {
   });
 
   describe('logoutAll', () => {
-    it('should delegate to the service and confirm the logout from all sessions', async () => {
-      const dto: RefreshDto = { refreshToken: 'current-raw-refresh-token' };
+    it('should revoke all sessions of the current user', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
       service.logoutAll.mockResolvedValue(undefined);
 
-      await expect(controller.logoutAll(dto)).resolves.toEqual({
+      await expect(controller.logoutAll(userId)).resolves.toEqual({
         message: 'Logged out from all sessions successfully',
       });
-      expect(service.logoutAll).toHaveBeenCalledWith(dto.refreshToken);
+      expect(service.logoutAll).toHaveBeenCalledWith(userId);
     });
   });
 });
