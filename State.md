@@ -1,24 +1,25 @@
 # Project State
 
 **Last updated**: 2026-10-15
-**Current phase**: Phase 2 — Authentication
+**Current phase**: Phase 2 — Authentication (complete), entering Phase 3 — Users & Characters
 
 ## Current Status
 
-Phase 2 is in progress. TASK-021 (Create @Roles() decorator and RolesGuard) has been completed. `@Roles()` marks handlers with required roles and the global `RolesGuard` (after `AuthGuard`) enforces exact membership, 403 otherwise; routes without roles stay open. No endpoints use it yet (admin routes arrive in Phase 4). Covered by colocated unit tests written first under strict TDD.
+Phase 2 is complete. TASK-022 (Add rate limiting to auth endpoints) verified that all five auth routes already carry `@ThrottleAuth()` (5 req/min) and proved it over HTTP: the 6th rapid `POST /auth/register` returns 429 while `GET /health` stays 200. Next is Phase 3 (TASK-023).
 
 ## Last Completed
 
-- **TASK-021** — Create @Roles() decorator and RolesGuard: Added `@Roles()` metadata decorator (`user`/`admin`/`webmaster`, exact match, no hierarchy) and global `RolesGuard` registered after `AuthGuard` (identity first, then role; fail-closed 403). No endpoints consume it yet (Phase 4 admin routes will). Colocated unit tests (decorator 2, guard 4) following RED → GREEN → REFACTOR; full suite 62/62 pass, lint clean, e2e health passes.
+- **TASK-022** — Add rate limiting to auth endpoints: Verified all five auth routes carry `@ThrottleAuth()` and proved enforcement over HTTP with a new e2e spec (6th rapid register → 429, health control stays 200). No production changes needed. Phase 2 Authentication is now complete.
 
 ## Next Task
 
-- **TASK-022** — Add rate limiting to auth endpoints.
+- **TASK-023** — Implement GET /users/me endpoint.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-022 | Auth bucket proven over HTTP (6th register 429, health 200); Phase 2 complete |
 | 2026-10-15 | TASK-021 | Roles decorator + global RolesGuard (exact match, no hierarchy yet); 62/62 pass |
 | 2026-10-15 | TASK-020 | Global AuthGuard + Public + CurrentUser, logout-all on Bearer; 56/56 pass |
 | 2026-10-15 | TASK-019 | POST /auth/logout-all via revokeAllForUser, 401 without live token; 49/49 pass |
@@ -65,8 +66,8 @@ Phase 2 is in progress. TASK-021 (Create @Roles() decorator and RolesGuard) has 
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-022 - Add rate limiting to auth endpoints (verify @ThrottleAuth() on all auth routes)
-- Auth module: `@Roles()` + global `RolesGuard` after `AuthGuard` (exact role match, 403 fail-closed); no endpoints use roles yet
+- Next: TASK-023 - Implement GET /users/me endpoint (Phase 3 start)
+- Auth module: all 5 routes carry `@ThrottleAuth()` (proven by e2e); logout still takes refresh token in body, logout-all on Bearer
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches
