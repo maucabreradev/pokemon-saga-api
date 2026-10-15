@@ -132,6 +132,7 @@ A task is **NOT** complete until:
 - **Style**: ESLint + Prettier enforced
 - **Testing**: TDD mandatory — RED → GREEN → REFACTOR for all features and bugfixes
 - **Documentation**: Update relevant docs when changing behavior
+- **Security**: **NEVER** commit passwords, API keys, JWT secrets, database credentials, or any sensitive data to the repository. Use `.env.example` with placeholder values only (e.g., `your-secret-key-change-in-production`). Real credentials must be injected at runtime via environment variables (CI/CD, Docker env_file), Docker secrets, or cloud provider secret managers (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault). `.env` files must be in `.gitignore`. Rotate secrets immediately if accidentally committed.
 
 ## Task Tracking
 
