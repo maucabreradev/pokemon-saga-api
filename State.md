@@ -1,24 +1,26 @@
 # Project State
 
 **Last updated**: 2026-10-15
-**Current phase**: Phase 3 — Users & Characters (TASK-026 complete, next TASK-027)
+**Current phase**: Phase 3 — Users & Characters (TASK-027 complete, next TASK-028)
 
 ## Current Status
 
-Phase 2 is complete. TASK-026 (GET /users/me/characters) implemented via UsersService.getMyCharacters and UsersController.getMyCharacters. Returns character summaries ordered by creation, excludes deleted via status + deletedAt filter, empty array when none. Next is TASK-027 (GET /users/me/sessions).
+Phase 2 is complete. TASK-027 (GET /users/me/sessions) implemented via UsersService.getMySessions and UsersController.getMySessions. Returns active sessions (id/createdAt/expiresAt, never hashes) ordered newest-first, excludes revoked/expired. Next is TASK-028 (DELETE /users/me, unblocked by migration 0002 + ADR-013).
 
 ## Last Completed
 
-- **TASK-026** — Implement GET /users/me/characters: Service lists owned character summaries with robust deleted filter; 86/86 unit and 3/3 e2e pass, lint clean, no migration needed.
+- **TASK-027** — Implement GET /users/me/sessions: Service lists active refresh-token sessions with revoked/expired filter; 90/90 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Next Task
 
-- **TASK-027** — Implement GET /users/me/sessions.
+- **TASK-028** — Implement DELETE /users/me (soft delete).
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-027 | GET /users/me/sessions via UsersService (active sessions newest-first, hashes never exposed); 90/90 unit, 3/3 e2e, no migration |
+| 2026-10-15 | MIG-002 | users.deleted_at column + migration 0002 (ADR-013 soft-delete shape, cascade + filters land in TASK-028) |
 | 2026-10-15 | TASK-026 | GET /users/me/characters via UsersService (summaries ordered, deleted excluded via status + deletedAt, [] when none); 86/86 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-025 | PATCH /users/me/password via ChangePasswordDto (401 wrong current, 400 same/weak, bcrypt 12, revoke all sessions, 204); 82/82 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-024 | PATCH /users/me via UpdateUserDto (idempotent, 409 taken, explicit updatedAt); 73/73 unit, 3/3 e2e, no migration; timestamp convention in DB.md |
@@ -72,11 +74,12 @@ Phase 2 is complete. TASK-026 (GET /users/me/characters) implemented via UsersSe
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-027 - Implement GET /users/me/sessions
+- Next: TASK-028 - Implement DELETE /users/me (soft delete, unblocked)
 - Users module: `UsersService.getMe` selects only id/email/role/createdAt, throws NotFoundError (404) when missing; `GET /users/me` uses `@CurrentUser('sub')`, Bearer required, documented under `Users` tag
 - Users email update: `UpdateUserDto` validates format (400 via global pipe); `updateEmail` returns current profile idempotently on same email, 409 via ConflictError when taken, explicit `updatedAt: new Date()` per DB.md timestamp convention
 - Users password change: `ChangePasswordDto` (min 8, max 64); `changePassword` verifies current (401), rejects same-as-current (400), bcrypt 12 re-hash, explicit `updatedAt`, revokes all refresh tokens, 204 No Content
 - Users character list: `getMyCharacters` selects id/readableId/publicName/status/isMainCharacter ordered by createdAt ASC, excludes deleted (status + deletedAt); no user lookup, `[]` when none; characters table queried from UsersService until TASK-029 extracts CharactersService
+- Users sessions list: `getMySessions` selects id/createdAt/expiresAt ordered by createdAt DESC, filters revoked/expired; hashes never exposed
 - Auth module: all 5 routes carry `@ThrottleAuth()` (proven by e2e); logout still takes refresh token in body, logout-all on Bearer
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch

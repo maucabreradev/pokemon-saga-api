@@ -95,4 +95,24 @@ export class UsersController {
   getMyCharacters(@CurrentUser('sub') userId: string) {
     return this.usersService.getMyCharacters(userId);
   }
+
+  @Get('me/sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List current user active sessions' })
+  @ApiOkResponse({
+    description: 'Active sessions of the authenticated user (token hashes never exposed)',
+    schema: {
+      example: [
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          createdAt: '2026-10-15T10:00:00.000Z',
+          expiresAt: '2026-11-14T10:00:00.000Z',
+        },
+      ],
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  getMySessions(@CurrentUser('sub') userId: string) {
+    return this.usersService.getMySessions(userId);
+  }
 }

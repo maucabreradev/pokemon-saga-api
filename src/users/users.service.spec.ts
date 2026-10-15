@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNull, ne } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import {
   ConflictError,
@@ -18,6 +18,8 @@ jest.mock('drizzle-orm', () => {
     eq: jest.fn(),
     and: jest.fn(),
     asc: jest.fn(),
+    desc: jest.fn(),
+    gt: jest.fn(),
     isNull: jest.fn(),
     ne: jest.fn(),
   };
@@ -46,6 +48,18 @@ function createDbMock(rows: unknown[] = []) {
       }),
     }),
   };
+}
+
+function createListDbMock(listRows: unknown[] = []) {
+  const orderByMock = jest.fn().mockResolvedValue(listRows);
+  const dbMock = {
+    select: jest.fn().mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({ orderBy: orderByMock }),
+      }),
+    }),
+  };
+  return { dbMock, orderByMock };
 }
 
 function createService(dbMock: unknown) {
@@ -277,18 +291,6 @@ describe('UsersService', () => {
       },
     ];
 
-    function createListDbMock(listRows: unknown[] = []) {
-      const orderByMock = jest.fn().mockResolvedValue(listRows);
-      const dbMock = {
-        select: jest.fn().mockReturnValue({
-          from: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({ orderBy: orderByMock }),
-          }),
-        }),
-      };
-      return { dbMock, orderByMock };
-    }
-
     it('should return all character summaries of the user', async () => {
       const { dbMock } = createListDbMock(rows);
       const service = createService(dbMock);
@@ -319,6 +321,54 @@ describe('UsersService', () => {
       const service = createService(dbMock);
 
       await expect(service.getMyCharacters(userId)).resolves.toEqual([]);
+    });
+  });
+
+  describe('getMySessions', () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const rows = [
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        createdAt: new Date('2026-10-15T10:00:00.000Z'),
+        expiresAt: new Date('2026-11-14T10:00:00.000Z'),
+      },
+      {
+        id: '55555555-5555-4555-8555-555555555555',
+        createdAt: new Date('2026-10-15T09:00:00.000Z'),
+        expiresAt: new Date('2026-11-14T09:00:00.000Z'),
+      },
+    ];
+
+    it('should return active sessions without token hashes', async () => {
+      const { dbMock } = createListDbMock(rows);
+      const service = createService(dbMock);
+
+      const result = await service.getMySessions(userId);
+
+      expect(result).toEqual(rows);
+      expect(result).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ tokenHash: expect.anything() })]),
+      );
+    });
+
+    it('should filter by user and exclude revoked or expired tokens', async () => {
+      const { dbMock } = createListDbMock(rows);
+      const service = createService(dbMock);
+
+      await service.getMySessions(userId);
+
+      expect(eq).toHaveBeenCalledWith(refreshTokens.userId, userId);
+      expect(isNull).toHaveBeenCalledWith(refreshTokens.revokedAt);
+      expect(gt).toHaveBeenCalledWith(refreshTokens.expiresAt, expect.any(Date));
+      expect(and).toHaveBeenCalled();
+      expect(desc).toHaveBeenCalledWith(refreshTokens.createdAt);
+    });
+
+    it('should return an empty array when the user has no active sessions', async () => {
+      const { dbMock } = createListDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(service.getMySessions(userId)).resolves.toEqual([]);
     });
   });
 });
