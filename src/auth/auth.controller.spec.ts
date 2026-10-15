@@ -22,6 +22,12 @@ jest.mock('@nestjs/jwt', () => ({
   JwtService: jest.fn(),
 }));
 
+// @nestjs/config is imported by AuthService and ships ESM-only dist.
+// It carries no runtime behavior relevant here, so it is stubbed too.
+jest.mock('@nestjs/config', () => ({
+  ConfigService: jest.fn(),
+}));
+
 // database.module pulls @nestjs/config (ESM-only dist) which unit Jest (CJS)
 // cannot parse. It is stubbed here; AuthService itself is injected as a manual mock.
 jest.mock('../database/database.module', () => ({
@@ -58,12 +64,12 @@ describe('AuthController', () => {
   });
 
   describe('login', () => {
-    it('should delegate to the service and return the access token', async () => {
+    it('should delegate to the service and return both tokens', async () => {
       const dto: LoginDto = {
         email: 'ash.ketchum@pallettown.gg',
         password: 'pikachu-25-forever',
       };
-      const tokens = { accessToken: 'signed-access-token' };
+      const tokens = { accessToken: 'signed-access-token', refreshToken: 'raw-refresh-token' };
       service.login.mockResolvedValue(tokens);
 
       await expect(controller.login(dto)).resolves.toEqual(tokens);
