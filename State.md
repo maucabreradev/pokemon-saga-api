@@ -5,20 +5,21 @@
 
 ## Current Status
 
-Phase 2 is in progress. TASK-020 (Create AuthGuard and @CurrentUser decorator) has been completed. `AuthGuard` is global (`APP_GUARD`, fail-closed) with `@Public()` opt-out on register/login/refresh/health; `@CurrentUser()` exposes the verified JWT payload. `logout-all` migrated to Bearer (`sub` → `revokeAllForUser`, no body). Covered by colocated unit tests written first under strict TDD.
+Phase 2 is in progress. TASK-021 (Create @Roles() decorator and RolesGuard) has been completed. `@Roles()` marks handlers with required roles and the global `RolesGuard` (after `AuthGuard`) enforces exact membership, 403 otherwise; routes without roles stay open. No endpoints use it yet (admin routes arrive in Phase 4). Covered by colocated unit tests written first under strict TDD.
 
 ## Last Completed
 
-- **TASK-020** — Create AuthGuard and @CurrentUser decorator: Added global `AuthGuard` (Bearer verify, `request.user` attach, 401 on missing/malformed/invalid), `@Public()` opt-out (register/login/refresh/health), and `@CurrentUser()` with `JwtPayload`. Migrated `logout-all` to Bearer identity (no body). Colocated unit tests (guard 5, decorators 5, updated service/controller) following RED → GREEN → REFACTOR; full suite 56/56 pass, lint clean, e2e health passes, HTTP enforcement verified at runtime (public 200, protected 401 x3).
+- **TASK-021** — Create @Roles() decorator and RolesGuard: Added `@Roles()` metadata decorator (`user`/`admin`/`webmaster`, exact match, no hierarchy) and global `RolesGuard` registered after `AuthGuard` (identity first, then role; fail-closed 403). No endpoints consume it yet (Phase 4 admin routes will). Colocated unit tests (decorator 2, guard 4) following RED → GREEN → REFACTOR; full suite 62/62 pass, lint clean, e2e health passes.
 
 ## Next Task
 
-- **TASK-021** — Create @Roles() decorator and RolesGuard.
+- **TASK-022** — Add rate limiting to auth endpoints.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-021 | Roles decorator + global RolesGuard (exact match, no hierarchy yet); 62/62 pass |
 | 2026-10-15 | TASK-020 | Global AuthGuard + Public + CurrentUser, logout-all on Bearer; 56/56 pass |
 | 2026-10-15 | TASK-019 | POST /auth/logout-all via revokeAllForUser, 401 without live token; 49/49 pass |
 | 2026-10-15 | TASK-018 | POST /auth/logout idempotent by hash (Bearer migration pending TASK-020); 44/44 pass |
@@ -64,8 +65,8 @@ Phase 2 is in progress. TASK-020 (Create AuthGuard and @CurrentUser decorator) h
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-021 - Create @Roles() decorator and RolesGuard
-- Auth module: global `AuthGuard` (fail-closed, `@Public()` on register/login/refresh/health), `@CurrentUser(key?)` over `JwtPayload`, `logout-all(sub)` via Bearer; `logout` still takes refresh token in body
+- Next: TASK-022 - Add rate limiting to auth endpoints (verify @ThrottleAuth() on all auth routes)
+- Auth module: `@Roles()` + global `RolesGuard` after `AuthGuard` (exact role match, 403 fail-closed); no endpoints use roles yet
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches

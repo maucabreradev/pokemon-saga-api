@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 // Matches validation.schema.ts: /^\d+[mhd]$/ (e.g. '15m', '1h', '30d').
 // The cast is safe because ConfigModule validates the pattern at boot.
@@ -28,6 +29,10 @@ type TokenExpiry = `${number}${'m' | 'h' | 'd'}`;
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })
