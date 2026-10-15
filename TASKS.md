@@ -143,4 +143,4 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 
 ## Phase 12 — Auth Hardening
 
-- [ ] **TASK-101** — Refresh token reuse detection with family revocation
+- [x] **TASK-101** — Refresh token reuse detection with family revocation

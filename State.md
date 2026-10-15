@@ -5,11 +5,11 @@
 
 ## Current Status
 
-Phase 2 is in progress. TASK-017 (Implement token refresh endpoint with rotation) has been completed. `POST /api/v1/auth/refresh` validates the refresh token by hash, rejects unknown/expired/revoked tokens with a generic `UnauthorizedError` (401), revokes the used token (`revokedAt`), and issues a new access + refresh pair. Covered by colocated unit tests written first under strict TDD.
+Phase 2 is in progress. TASK-101 (Refresh token reuse detection with family revocation) has been completed. `refresh()` now treats a revoked-but-unexpired token as a compromise signal: it revokes the whole token family via `revokeAllForUser()` and returns a generic 401. Expired tokens keep the plain 401 without family action. Recorded in ADR-012. Next is TASK-018 (logout).
 
 ## Last Completed
 
-- **TASK-017** — Implement token refresh endpoint with rotation: Added `RefreshDto`, `AuthService.refresh()` (hash lookup, generic 401 on unknown/expired/revoked or orphaned token, `revokedAt` set on use, new access + refresh pair via `signAsync` + `issueRefreshToken`), and `POST /auth/refresh` (public, `@ThrottleAuth()`, HTTP 200, Swagger docs). Colocated unit tests (dto 3, service 4, controller 1) following RED → GREEN → REFACTOR; full suite 39/39 pass, lint clean, e2e health passes.
+- **TASK-101** — Refresh token reuse detection with family revocation: `refresh()` revokes the entire family (`revokeAllForUser()`, reused by future TASK-019) on revoked-but-unexpired token reuse, generic 401; expired tokens keep plain 401. Registered Phase 12 in `TASKS.md` and recorded ADR-012 (simple variant, no grace window). Colocated unit tests (2 new) following RED → GREEN → REFACTOR; full suite 40/40 pass, lint clean, e2e health passes.
 
 ## Next Task
 
@@ -19,6 +19,7 @@ Phase 2 is in progress. TASK-017 (Implement token refresh endpoint with rotation
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-101 | Reuse detection revokes family (ADR-012, Phase 12); 40/40 pass |
 | 2026-10-15 | TASK-017 | POST /auth/refresh with rotation (revoke-on-use, generic 401); 39/39 pass |
 | 2026-10-15 | TASK-016 | issueRefreshToken (SHA-256 stored, 30d expiry), login returns both tokens; 31/31 pass |
 | 2026-10-15 | TASK-015 | POST /auth/login with bcrypt compare, generic 401, JWT access token (15m); fixed unloaded config namespaces; 7 new unit tests (28/28 pass) |
@@ -61,7 +62,7 @@ Phase 2 is in progress. TASK-017 (Implement token refresh endpoint with rotation
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
 - Next: TASK-018 - Implement logout (single session)
-- Auth module: `RefreshDto`, `refresh()` (hash lookup, generic 401, revoke-on-use, new pair via `signAsync` + `issueRefreshToken`); reuse of rotated token → 401; family-wide revocation on reuse left as future hardening
+- Auth module: reuse detection revokes family via `revokeAllForUser()` (shared primitive for TASK-019 logout-all); grace window with idempotent replay deferred (see ADR-012)
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches
