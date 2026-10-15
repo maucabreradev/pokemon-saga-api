@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, asc, eq, isNull, ne } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import {
   ConflictError,
@@ -6,19 +6,27 @@ import {
   UnauthorizedError,
   ValidationError,
 } from '../common/exceptions/app-errors';
+import { characters } from '../database/schema/characters';
 import { refreshTokens } from '../database/schema/refresh-tokens';
 import { users } from '../database/schema/users';
 import { UsersService } from './users.service';
+
+jest.mock('drizzle-orm', () => {
+  const actual = jest.requireActual('drizzle-orm');
+  return {
+    ...actual,
+    eq: jest.fn(),
+    and: jest.fn(),
+    asc: jest.fn(),
+    isNull: jest.fn(),
+    ne: jest.fn(),
+  };
+});
 
 jest.mock('bcrypt', () => ({
   hash: jest.fn(),
   compare: jest.fn(),
 }));
-
-jest.mock('drizzle-orm', () => {
-  const actual = jest.requireActual('drizzle-orm');
-  return { ...actual, eq: jest.fn() };
-});
 
 // database.module pulls @nestjs/config (ESM-only dist) which unit Jest (CJS)
 // cannot parse. The DRIZZLE token carries no runtime behavior relevant here,
@@ -247,6 +255,70 @@ describe('UsersService', () => {
       expect(mockedCompare).not.toHaveBeenCalled();
       expect(mockedHash).not.toHaveBeenCalled();
       expect(dbMock.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getMyCharacters', () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const rows = [
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        readableId: 'GreenAppleHunter123',
+        publicName: 'Pikachu',
+        status: 'active' as const,
+        isMainCharacter: true,
+      },
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        readableId: 'BlueOceanRunner456',
+        publicName: 'Charizard',
+        status: 'banned' as const,
+        isMainCharacter: false,
+      },
+    ];
+
+    function createListDbMock(listRows: unknown[] = []) {
+      const orderByMock = jest.fn().mockResolvedValue(listRows);
+      const dbMock = {
+        select: jest.fn().mockReturnValue({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({ orderBy: orderByMock }),
+          }),
+        }),
+      };
+      return { dbMock, orderByMock };
+    }
+
+    it('should return all character summaries of the user', async () => {
+      const { dbMock } = createListDbMock(rows);
+      const service = createService(dbMock);
+
+      const result = await service.getMyCharacters(userId);
+
+      expect(result).toEqual(rows);
+      expect(result).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ userId: expect.anything() })]),
+      );
+    });
+
+    it('should filter by user and exclude deleted characters', async () => {
+      const { dbMock } = createListDbMock(rows);
+      const service = createService(dbMock);
+
+      await service.getMyCharacters(userId);
+
+      expect(eq).toHaveBeenCalledWith(characters.userId, userId);
+      expect(ne).toHaveBeenCalledWith(characters.status, 'deleted');
+      expect(isNull).toHaveBeenCalledWith(characters.deletedAt);
+      expect(and).toHaveBeenCalled();
+      expect(asc).toHaveBeenCalledWith(characters.createdAt);
+    });
+
+    it('should return an empty array when the user has no characters', async () => {
+      const { dbMock } = createListDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(service.getMyCharacters(userId)).resolves.toEqual([]);
     });
   });
 });
