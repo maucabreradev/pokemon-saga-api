@@ -18,7 +18,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-006** — Generate and run initial migrations
 - [x] **TASK-007** — Set up environment configuration
 - [x] **TASK-008** — Implement global exception filter and error handling
-- [ ] **TASK-009** — Set up Swagger/OpenAPI documentation
+- [x] **TASK-009** — Set up Swagger/OpenAPI documentation
 - [ ] **TASK-010** — Configure Helmet, CORS, and security headers
 - [ ] **TASK-011** — Implement rate limiting with @nestjs/throttler
 - [ ] **TASK-012** — Set up health check endpoint
