@@ -5,28 +5,30 @@
 
 ## Current Status
 
-Phase 1 is in progress. TASK-003 (Set up Docker Compose) has been completed. The API and PostgreSQL now run via Docker Compose with an internal bridge network. The database is not exposed to the host — only accessible from the API service. A development override file provides hot-reload and DB port access for local development.
+Phase 1 is in progress. TASK-004 (Configure Drizzle ORM) has been completed. The project now has Drizzle ORM configured with PostgreSQL driver and connection pooling. The DatabaseModule is global and injectable. A minimal users table exists as placeholder until the full schema is created in TASK-005.
 
 ## Last Completed
 
-- **TASK-003** — Set up Docker Compose: Created multi-stage Dockerfile (deps → build → production), compose.yaml with internal network and health checks, compose.override.yaml for development with hot-reload, .dockerignore, and .env.example with all required configuration.
+- **TASK-004** — Configure Drizzle ORM with PostgreSQL connection: Installed drizzle-orm, drizzle-kit, pg, @types/pg, dotenv. Created drizzle.config.ts, database.module.ts with connection pool, and minimal users schema placeholder. Verified lint, tests, and build pass.
 
 ## Next Task
 
-- **TASK-004** — Configure Drizzle ORM with PostgreSQL connection: Install drizzle-orm and drizzle-kit, create drizzle.config.ts, set up database module with connection pool, add db scripts to package.json, verify connection to Docker PostgreSQL.
+- **TASK-005** — Create database schema (all tables): Define all 12 tables in Drizzle schema — users, characters, characters_profile, refresh_tokens, categories, forums, topics, posts, friendships, reactions, moderation_logs, silences. Add all indexes and foreign key constraints.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
-| 2026-10-14 | TASK-003 | Docker Compose with internal network, multi-stage Dockerfile, health checks |
+| 2026-10-14 | TASK-004 | Drizzle ORM configured with PostgreSQL connection pool, global DatabaseModule |
+| 2026-10-14 | TASK-003 | Docker Compose with internal network, multi-stage Dockerfile |
 | 2026-10-14 | TASK-002 | ESLint 9 with flat config, Prettier, TypeScript globals |
 | 2026-10-14 | TASK-001 | NestJS project scaffolded with pnpm |
 
 ## Context for Next Session
 
-- Docker Compose validated with `docker compose config --quiet`
-- DB has no exposed ports in production compose — internal network only
-- compose.override.yaml auto-loads for development (adds DB port 5432 + hot-reload)
-- Next: TASK-004 — Drizzle ORM configuration with PostgreSQL
+- Drizzle ORM is configured and connecting to PostgreSQL via DATABASE_URL
+- DatabaseModule is global and provides DRIZZLE injection token
+- drizzle.config.ts points to src/database/schema and outputs to src/database/migrations
+- Only a minimal users.ts exists — full schema comes in TASK-005
+- Connection pool defaults to 10, configurable via DB_POOL_SIZE env var
 - Git workflow: feature branch → squash merge → develop → delete feature branch
