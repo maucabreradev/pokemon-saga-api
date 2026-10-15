@@ -5,20 +5,21 @@
 
 ## Current Status
 
-Phase 1 is in progress. TASK-011 (Implement rate limiting with @nestjs/throttler) has been completed. The application now has comprehensive rate limiting with global limits (100 req/min per IP) and stricter auth endpoint limits (5 req/min per IP) using named throttlers.
+Phase 1 is in progress. TASK-012 (Set up health check endpoint) has been completed. The health check endpoint at `/api/v1/health` now follows NestJS patterns: a `HealthService` owns the check logic (returns status, ISO timestamp, and process uptime) and `HealthController` delegates to it. Both are covered by colocated unit tests written first under strict TDD.
 
 ## Last Completed
 
-- **TASK-011** — Implement rate limiting with @nestjs/throttler: Installed `@nestjs/throttler` v6.7.1. Created `src/config/rate-limit.config.ts` with `getThrottlerConfig()` and `applyRateLimiting()` functions. Configured two named throttlers: 'global' (100 req/min) and 'auth' (5 req/min). Integrated into AppModule via `applyRateLimiting()`. Added unit tests (3 tests) following TDD: RED → GREEN → REFACTOR.
+- **TASK-012** — Set up health check endpoint: Created `src/health/health.service.ts` with `check()` returning `{ status, timestamp, uptime }` plus `HealthStatus` interface. Refactored `HealthController` to inject `HealthService` via DI (no business logic in controller) and updated Swagger example. Registered `HealthService` in `HealthModule`. Added colocated unit tests `health.service.spec.ts` (3 tests) and `health.controller.spec.ts` (1 test) following RED → GREEN → REFACTOR; all 11 tests pass with no regressions.
 
 ## Next Task
 
-- **TASK-012** — Set up health check endpoint: The health check endpoint already exists at `/api/v1/health` (implemented in TASK-009). Verify it works with rate limiting and add any missing functionality.
+- **TASK-013** — Configure Git workflow and branch protection rules: Document branch protection for `main`/`develop`, required checks, and review policy.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-14 | TASK-012 | HealthService with status/timestamp/uptime, controller delegates via DI, colocated unit tests (TDD) |
 | 2026-10-14 | TASK-011 | Rate limiting with @nestjs/throttler (global 100/min, auth 5/min), unit tests (TDD) |
 | 2026-10-14 | TASK-010 | Helmet security headers, CORS config, unit tests (TDD) |
 | 2026-10-14 | TASK-009 | Swagger/OpenAPI setup with Bearer auth, 11 tags, HealthController with decorators |
@@ -44,5 +45,6 @@ Phase 1 is in progress. TASK-011 (Implement rate limiting with @nestjs/throttler
 - Global AllExceptionsFilter and DatabaseExceptionFilter
 - ResponseInterceptor adds metadata (timestamp, path, duration)
 - Custom ValidationPipe with class-validator and class-transformer
-- Next: TASK-012 - Health check endpoint (verify existing works)
+- Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
+- Next: TASK-013 - Git workflow and branch protection rules
 - Git workflow: feature branch → squash merge → develop → delete feature branch
