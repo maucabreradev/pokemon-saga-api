@@ -22,7 +22,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-010** — Configure Helmet, CORS, and security headers
 - [x] **TASK-011** — Implement rate limiting with @nestjs/throttler
 - [x] **TASK-012** — Set up health check endpoint
-- [ ] **TASK-013** — Configure Git workflow and branch protection rules
+- [x] **TASK-013** — Configure Git workflow and branch protection rules
 
 ## Phase 2 — Authentication
 

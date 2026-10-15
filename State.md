@@ -1,24 +1,25 @@
 # Project State
 
-**Last updated**: 2026-10-14
-**Current phase**: Phase 1 — Foundations
+**Last updated**: 2026-10-15
+**Current phase**: Phase 1 — Foundations (complete), entering Phase 2 — Authentication
 
 ## Current Status
 
-Phase 1 is in progress. TASK-012 (Set up health check endpoint) has been completed. The health check endpoint at `/api/v1/health` now follows NestJS patterns: a `HealthService` owns the check logic (returns status, ISO timestamp, and process uptime) and `HealthController` delegates to it. Both are covered by colocated unit tests written first under strict TDD.
+Phase 1 is complete. TASK-013 (Configure Git workflow and branch protection rules) has been completed. CI now triggers on `main` and `develop`, `.github` provides a PR template, CODEOWNERS, and a manual branch protection guide (Option A via GitHub UI). Phase 2 (Authentication) is next.
 
 ## Last Completed
 
-- **TASK-012** — Set up health check endpoint: Created `src/health/health.service.ts` with `check()` returning `{ status, timestamp, uptime }` plus `HealthStatus` interface. Refactored `HealthController` to inject `HealthService` via DI (no business logic in controller) and updated Swagger example. Registered `HealthService` in `HealthModule`. Added colocated unit tests `health.service.spec.ts` (3 tests) and `health.controller.spec.ts` (1 test) following RED → GREEN → REFACTOR; all 11 tests pass with no regressions.
+- **TASK-013** — Configure Git workflow and branch protection rules: CI triggers on `main` and `develop` (required checks: Lint, Unit Tests, Integration & E2E Tests, TDD & Migration Enforcement). Added `.github/pull_request_template.md` (TDD/migration/workflow checklists), `.github/CODEOWNERS` (`@maucabreradev`), and `.github/BRANCH_PROTECTION.md` (Option A manual UI rules: PR + 1 approval, dismiss stale, require Code Owners, require up-to-date checks, linear history, include admins, no bypass/deletion/force-push). Docs-only change, no `src` touched so TDD spec-check passes vacuously; verified with lint and full test suites.
 
 ## Next Task
 
-- **TASK-013** — Configure Git workflow and branch protection rules: Document branch protection for `main`/`develop`, required checks, and review policy.
+- **TASK-014** — Implement user registration endpoint: first task of Phase 2 — Authentication.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-013 | CI on main+develop, PR template, CODEOWNERS, BRANCH_PROTECTION.md (Option A manual UI); Phase 1 complete |
 | 2026-10-15 | DOCS | ADR-008–011 recorded (rate-limit bucket rule, Jest ESM strategy, strict coverage gate, LF endings) |
 | 2026-10-15 | FIX-003 | Specs colocated, real e2e (babel ESM + swagger stub), any casts removed, dead filter/duplicate pipe/stray file removed, CI spec-check narrowed |
 | 2026-10-15 | FIX-002 | .gitattributes (LF) + working tree normalized, test:e2e/test:integration scripts + jest configs, packageManager pin, CI without bc/version pins, lint 0 errors |
@@ -54,5 +55,6 @@ Phase 1 is in progress. TASK-012 (Set up health check endpoint) has been complet
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-013 - Git workflow and branch protection rules
+- Next: TASK-014 - Implement user registration endpoint (Phase 2 start)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
+- Branch protection (Option A manual): `main`/`develop` require PR + 1 approval, Code Owners review, dismiss stale, up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; CI triggers on both branches
