@@ -115,6 +115,17 @@ A task is **NOT** complete until:
 
 **All of these mean: Delete code. Start over with TDD.**
 
+## Database Migrations
+
+**MANDATORY whenever schema changes.**
+
+- Every task that modifies the database schema (add/remove tables, columns, indexes, constraints) MUST generate a migration
+- Use `pnpm db:generate` to create migration files (NEVER `db:push` for permanent changes)
+- Migration files are committed in the SAME commit as the schema change
+- Migration names follow Drizzle's automatic timestamp format
+- If two features modify the same table, coordinate migration order before squash merge
+- CI runs migrations on test database before running tests
+
 ## Code Standards
 
 - **Language**: All code, comments, text, and documentation in **English**
@@ -126,9 +137,10 @@ A task is **NOT** complete until:
 
 When a task is completed:
 1. Mark the corresponding checkbox as `[x]` in `TASKS.md`
-2. Commit the updated `TASKS.md` on the feature branch before squash merge
+2. Update `STATE.md` with: current project status, last completed task, next pending task, and any context notes for the next session
+3. Commit the updated `TASKS.md` and `STATE.md` on the feature branch before squash merge
 
-Example commit: `chore(tasks): mark TASK-014 as completed`
+Example commit: `chore(tasks): mark TASK-014 as completed and update project state`
 
 ## Strict Rules
 
@@ -140,3 +152,4 @@ Example commit: `chore(tasks): mark TASK-014 as completed`
 6. **Contextual messages** — explain *why*, not just *what*
 7. **Mark tasks as done** — update `TASKS.md` checkbox when a task is completed
 8. **TDD always** — RED → GREEN → REFACTOR for every feature and bugfix, no exceptions
+9. **Migrations mandatory** — Schema changes require `pnpm db:generate`, committed with the change

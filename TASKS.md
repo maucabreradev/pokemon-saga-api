@@ -4,6 +4,8 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 
 **TDD is mandatory for every task.** Follow RED → GREEN → REFACTOR before marking any task as complete. See `AGENTS.md` for the full TDD workflow and `TESTING.md` for the testing strategy.
 
+**Schema changes require migrations.** Any task that modifies the database schema MUST generate a migration with `pnpm db:generate` and commit it alongside the change. See `AGENTS.md` → Database Migrations.
+
 ---
 
 ## Phase 1 — Foundations
