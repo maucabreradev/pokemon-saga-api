@@ -5,20 +5,21 @@
 
 ## Current Status
 
-Phase 1 is in progress. TASK-006 (Generate and run initial migrations) has been completed. The Drizzle migration was generated from the schema and successfully applied to the PostgreSQL database running in Docker. All 12 tables with enums, indexes, foreign keys, and constraints are present.
+Phase 1 is in progress. TASK-007 (Set up environment configuration) has been completed. The application now uses @nestjs/config with validation schema, loading from .env files. Configuration is centralized in src/config/ with separate modules for app, database, JWT, and rate limiting. All env vars are validated on startup.
 
 ## Last Completed
 
-- **TASK-006** — Generate and run initial migrations: Ran `pnpm db:generate` to create migration from schema, verified SQL, started PostgreSQL in Docker with compose.yaml (internal network), ran `pnpm db:migrate` against database, confirmed all 12 tables exist.
+- **TASK-007** — Set up environment configuration: Installed @nestjs/config and joi. Created configuration.ts with app, database, JWT, rateLimit configs. Created validation.schema.ts with Joi schema for all required env vars. Updated AppModule to use ConfigModule with validation. Updated DatabaseModule to use ConfigService. Verified build and tests pass.
 
 ## Next Task
 
-- **TASK-007** — Set up environment configuration: Create config module with @nestjs/config, validation schema for env vars, load from .env, define config for DB, JWT, Server, Rate limiting, App. Add .env.example with all required vars. Validate on startup.
+- **TASK-008** — Implement global exception filter and error handling: Create standardized error response format, global exception filters for HTTP, database, and unhandled exceptions, custom exception classes, and proper error logging.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-14 | TASK-007 | Environment configuration with @nestjs/config, Joi validation, ConfigService |
 | 2026-10-14 | TASK-006 | Migration generated and applied - 12 tables in PostgreSQL |
 | 2026-10-14 | TASK-005 | 12 database tables defined with enums, indexes, FK constraints |
 | 2026-10-14 | TASK-004 | Drizzle ORM configured with PostgreSQL connection pool |
@@ -28,9 +29,10 @@ Phase 1 is in progress. TASK-006 (Generate and run initial migrations) has been 
 
 ## Context for Next Session
 
-- Drizzle migration applied successfully - 12 tables in PostgreSQL
-- compose.override.yaml uses port 5433 for DB access (dev only)
-- Production compose.yaml has no exposed DB ports (internal network only)
-- Migration file: src/database/migrations/0000_great_millenium_guard.sql
-- Next: TASK-007 - Environment configuration with @nestjs/config
+- @nestjs/config configured with validation schema and .env loading
+- Config modules: app, database, jwt, rateLimit
+- Validation schema with Joi for all required env vars
+- ConfigService injected in DatabaseModule
+- Build and tests pass
+- Next: TASK-008 - Global exception filter and error handling
 - Git workflow: feature branch → squash merge → develop → delete feature branch

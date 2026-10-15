@@ -16,7 +16,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-004** — Configure Drizzle ORM with PostgreSQL connection
 - [x] **TASK-005** — Create database schema (all tables)
 - [x] **TASK-006** — Generate and run initial migrations
-- [ ] **TASK-007** — Set up environment configuration
+- [x] **TASK-007** — Set up environment configuration
 - [ ] **TASK-008** — Implement global exception filter and error handling
 - [ ] **TASK-009** — Set up Swagger/OpenAPI documentation
 - [ ] **TASK-010** — Configure Helmet, CORS, and security headers
