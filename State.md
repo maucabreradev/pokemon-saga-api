@@ -19,6 +19,7 @@ Phase 1 is in progress. TASK-012 (Set up health check endpoint) has been complet
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | DOCS | ADR-008–011 recorded (rate-limit bucket rule, Jest ESM strategy, strict coverage gate, LF endings) |
 | 2026-10-15 | FIX-003 | Specs colocated, real e2e (babel ESM + swagger stub), any casts removed, dead filter/duplicate pipe/stray file removed, CI spec-check narrowed |
 | 2026-10-15 | FIX-002 | .gitattributes (LF) + working tree normalized, test:e2e/test:integration scripts + jest configs, packageManager pin, CI without bc/version pins, lint 0 errors |
 | 2026-10-15 | FIX-001 | ThrottlerGuard as APP_GUARD (enforcement now real), ThrottleAuth decorator, Dockerfile healthcheck path + tsconfig.build.json |

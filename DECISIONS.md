@@ -105,3 +105,62 @@
 - Can develop with manual data insertion initially
 - Seed data designed with full knowledge of the schema
 - Less rework if schema changes during development
+
+---
+
+## ADR-008: Global Rate Limiting with a Single Default Bucket
+
+**Status**: Accepted
+
+**Context**: `@nestjs/throttler` v6 `ThrottlerGuard` iterates over every configured named throttler and enforces each one on all routes unless explicitly skipped. The initial setup registered two named throttlers (`global` at 100 req/min, `auth` at 5 req/min) with no guard at all, so nothing was enforced — and registering the guard as-is would have throttled every endpoint down to 5 req/min.
+
+**Decision**: Register `ThrottlerGuard` as a global `APP_GUARD` with a single `default` bucket (100 requests per minute per IP). Stricter buckets are opt-in per route via the `ThrottleAuth()` decorator (5 req/min, to be applied to auth endpoints in Phase 2). Never add a named throttler to the global config unless it should apply to every route.
+
+**Consequences**:
+- Rate limiting is actually enforced, proven by test (HTTP 429 with `X-RateLimit-*` headers past the limit)
+- Adding a second named throttler to the global config silently tightens all routes — a documented trap for future changes
+- Auth endpoints must remember to apply `@ThrottleAuth()` (covered by TASK-022)
+
+---
+
+## ADR-009: ESM Dependencies under Jest CJS via Babel Transform
+
+**Status**: Accepted
+
+**Context**: `@nestjs/config` v12, `@nestjs/swagger` v12 and `@nestjs/mapped-types` ship ESM-only dist files (some using `import.meta`), while Jest runs in CommonJS mode via ts-jest. Importing `AppModule` in e2e/integration tests therefore failed at parse time, blocking the three-layer testing strategy in `TESTING.md`.
+
+**Decision**: In `tests/jest-e2e.json` and `tests/jest-integration.json`, transform all `.js` through babel with `@babel/plugin-transform-modules-commonjs`, and map `@nestjs/swagger` to a test-only stub of no-op decorator factories (`tests/e2e/swagger.stub.js`). The stub is faithful because e2e tests boot `AppModule` directly and never call `SwaggerModule.setup()` — the decorators are inert metadata for HTTP assertions.
+
+**Consequences**:
+- E2e/integration tests can import the real `AppModule` today (proven: the health e2e test boots the full module with no database needed, thanks to the lazy connection pool)
+- Plain-ESM dependencies work with zero extra config; only `import.meta` files need stub entries
+- Rejected alternatives: downgrading the swagger stack to CJS versions (regressing production dependencies to satisfy tests) and migrating Jest to native ESM (touches the entire toolchain; Phase 9 may revisit)
+
+---
+
+## ADR-010: Strict 80% Coverage Gate Despite Current ~14%
+
+**Status**: Accepted
+
+**Context**: Measured line coverage is ~14% during the foundations phase; the full test pyramid lands in Phase 9 (TASK-082–089). The CI coverage gates fail below 80%.
+
+**Decision**: Keep the strict 80% gate. Lowering it would enshrine low coverage, and a ratchet mechanism adds process machinery for a problem Phase 9 already owns.
+
+**Consequences**:
+- CI coverage steps are expected to fail until Phase 9 completes — this is signal, not noise
+- Each Phase 9 task visibly moves the number toward the gate
+- Lint passes and all test suites pass independently; only the coverage threshold steps stay red
+
+---
+
+## ADR-011: LF Line Endings Enforced via .gitattributes
+
+**Status**: Accepted
+
+**Context**: Prettier is configured with `endOfLine: lf`, but checkouts on Windows materialized CRLF (via `core.autocrlf`), producing ~500 lint errors that masked real ones. Investigation showed the repository blobs were already LF — only working-tree checkouts diverged.
+
+**Decision**: Enforce `* text=auto eol=lf` in `.gitattributes` and normalize the working tree. Per-machine git config is left untouched.
+
+**Consequences**:
+- Fresh checkouts stay LF on every OS; Prettier and ESLint agree everywhere
+- The one-time normalization touched 39 files with zero content change (verified by identical blob hashes)
