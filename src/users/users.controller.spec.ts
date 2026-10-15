@@ -1,5 +1,6 @@
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 // @nestjs/swagger ships ESM-only dist that Jest (CJS) cannot parse.
@@ -14,6 +15,7 @@ jest.mock('@nestjs/swagger', () => ({
   ApiBearerAuth: () => () => undefined,
   ApiBadRequestResponse: () => () => undefined,
   ApiConflictResponse: () => () => undefined,
+  ApiNoContentResponse: () => () => undefined,
 }));
 
 // database.module pulls @nestjs/config (ESM-only dist) which unit Jest (CJS)
@@ -24,10 +26,10 @@ jest.mock('../database/database.module', () => ({
 
 describe('UsersController', () => {
   let controller: UsersController;
-  let service: { getMe: jest.Mock; updateEmail: jest.Mock };
+  let service: { getMe: jest.Mock; updateEmail: jest.Mock; changePassword: jest.Mock };
 
   beforeEach(() => {
-    service = { getMe: jest.fn(), updateEmail: jest.fn() };
+    service = { getMe: jest.fn(), updateEmail: jest.fn(), changePassword: jest.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new UsersController(service as any as UsersService);
   });
@@ -62,6 +64,24 @@ describe('UsersController', () => {
 
       await expect(controller.updateMe(userId, dto)).resolves.toEqual(profile);
       expect(service.updateEmail).toHaveBeenCalledWith(userId, dto.email);
+    });
+  });
+
+  describe('changePassword', () => {
+    it('should delegate to the service with the current user id and passwords', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
+      const dto: ChangePasswordDto = {
+        currentPassword: 'pikachu-25-forever',
+        newPassword: 'charizard-06-forever',
+      };
+      service.changePassword.mockResolvedValue(undefined);
+
+      await expect(controller.changePassword(userId, dto)).resolves.toBeUndefined();
+      expect(service.changePassword).toHaveBeenCalledWith(
+        userId,
+        dto.currentPassword,
+        dto.newPassword,
+      );
     });
   });
 });
