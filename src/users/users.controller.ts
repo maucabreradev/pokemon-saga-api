@@ -73,4 +73,26 @@ export class UsersController {
   async changePassword(@CurrentUser('sub') userId: string, @Body() dto: ChangePasswordDto) {
     await this.usersService.changePassword(userId, dto.currentPassword, dto.newPassword);
   }
+
+  @Get('me/characters')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List current user characters' })
+  @ApiOkResponse({
+    description: 'Character summaries owned by the authenticated user',
+    schema: {
+      example: [
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          readableId: 'GreenAppleHunter123',
+          publicName: 'Pikachu',
+          status: 'active',
+          isMainCharacter: true,
+        },
+      ],
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  getMyCharacters(@CurrentUser('sub') userId: string) {
+    return this.usersService.getMyCharacters(userId);
+  }
 }

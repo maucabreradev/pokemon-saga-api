@@ -26,10 +26,20 @@ jest.mock('../database/database.module', () => ({
 
 describe('UsersController', () => {
   let controller: UsersController;
-  let service: { getMe: jest.Mock; updateEmail: jest.Mock; changePassword: jest.Mock };
+  let service: {
+    getMe: jest.Mock;
+    updateEmail: jest.Mock;
+    changePassword: jest.Mock;
+    getMyCharacters: jest.Mock;
+  };
 
   beforeEach(() => {
-    service = { getMe: jest.fn(), updateEmail: jest.fn(), changePassword: jest.fn() };
+    service = {
+      getMe: jest.fn(),
+      updateEmail: jest.fn(),
+      changePassword: jest.fn(),
+      getMyCharacters: jest.fn(),
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new UsersController(service as any as UsersService);
   });
@@ -82,6 +92,25 @@ describe('UsersController', () => {
         dto.currentPassword,
         dto.newPassword,
       );
+    });
+  });
+
+  describe('getMyCharacters', () => {
+    it('should delegate to the service with the current user id', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
+      const list = [
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          readableId: 'GreenAppleHunter123',
+          publicName: 'Pikachu',
+          status: 'active' as const,
+          isMainCharacter: true,
+        },
+      ];
+      service.getMyCharacters.mockResolvedValue(list);
+
+      await expect(controller.getMyCharacters(userId)).resolves.toEqual(list);
+      expect(service.getMyCharacters).toHaveBeenCalledWith(userId);
     });
   });
 });

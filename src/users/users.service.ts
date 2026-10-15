@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { and, asc, eq, isNull, ne } from 'drizzle-orm';
 import {
   ConflictError,
   NotFoundError,
@@ -8,6 +8,7 @@ import {
   ValidationError,
 } from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
+import { characters } from '../database/schema/characters';
 import { refreshTokens } from '../database/schema/refresh-tokens';
 import { users } from '../database/schema/users';
 
@@ -16,6 +17,14 @@ export interface UserProfile {
   email: string;
   role: 'user' | 'admin' | 'webmaster';
   createdAt: Date;
+}
+
+export interface CharacterSummary {
+  id: string;
+  readableId: string;
+  publicName: string;
+  status: 'active' | 'banned' | 'deleted';
+  isMainCharacter: boolean;
 }
 
 const BCRYPT_SALT_ROUNDS = 12;
@@ -125,5 +134,25 @@ export class UsersService {
       .update(refreshTokens)
       .set({ revokedAt: new Date() })
       .where(eq(refreshTokens.userId, userId));
+  }
+
+  async getMyCharacters(userId: string): Promise<CharacterSummary[]> {
+    return this.db
+      .select({
+        id: characters.id,
+        readableId: characters.readableId,
+        publicName: characters.publicName,
+        status: characters.status,
+        isMainCharacter: characters.isMainCharacter,
+      })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.userId, userId),
+          ne(characters.status, 'deleted'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .orderBy(asc(characters.createdAt));
   }
 }
