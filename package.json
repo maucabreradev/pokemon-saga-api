@@ -2,7 +2,7 @@
   "name": "pokemon-saga-api",
   "version": "1.0.0",
   "description": "REST API for a Pokémon role-playing forum",
-  "license": "MIT",
+  "license": "Unlicense",
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "build": "nest build",
