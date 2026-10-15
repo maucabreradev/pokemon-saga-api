@@ -19,6 +19,7 @@ Phase 1 is in progress. TASK-012 (Set up health check endpoint) has been complet
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | FIX-001 | ThrottlerGuard as APP_GUARD (enforcement now real), ThrottleAuth decorator, Dockerfile healthcheck path + tsconfig.build.json |
 | 2026-10-14 | TASK-012 | HealthService with status/timestamp/uptime, controller delegates via DI, colocated unit tests (TDD) |
 | 2026-10-14 | TASK-011 | Rate limiting with @nestjs/throttler (global 100/min, auth 5/min), unit tests (TDD) |
 | 2026-10-14 | TASK-010 | Helmet security headers, CORS config, unit tests (TDD) |
@@ -45,6 +46,8 @@ Phase 1 is in progress. TASK-012 (Set up health check endpoint) has been complet
 - Global AllExceptionsFilter and DatabaseExceptionFilter
 - ResponseInterceptor adds metadata (timestamp, path, duration)
 - Custom ValidationPipe with class-validator and class-transformer
+- Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
+- Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
 - Next: TASK-013 - Git workflow and branch protection rules
 - Git workflow: feature branch → squash merge → develop → delete feature branch

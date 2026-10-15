@@ -1,43 +1,61 @@
-import { ThrottlerModuleOptions } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { THROTTLER_LIMIT, THROTTLER_TTL } from '@nestjs/throttler/dist/throttler.constants';
+import {
+  AUTH_THROTTLE_LIMIT,
+  AUTH_THROTTLE_TTL,
+  ThrottleAuth,
+  applyRateLimiting,
+  getThrottlerConfig,
+  getThrottlerGlobalGuardProvider,
+} from '../../src/config/rate-limit.config';
 
 describe('Rate Limiting Configuration', () => {
   describe('getThrottlerConfig', () => {
-    it('should return throttler config with global rate limit', () => {
-      const { getThrottlerConfig } = require('../../src/config/rate-limit.config');
-      
+    it('should define a default throttler with 100 requests per minute', () => {
       const config = getThrottlerConfig();
-      
-      expect(config).toBeDefined();
-      expect(config.throttlers).toBeDefined();
-      expect(Array.isArray(config.throttlers)).toBe(true);
-      expect(config.throttlers.length).toBeGreaterThan(0);
-      
-      const globalThrottler = config.throttlers[0];
-      expect(globalThrottler.name).toBe('global');
-      expect(globalThrottler.ttl).toBe(60000); // 1 minute in ms
-      expect(globalThrottler.limit).toBe(100); // 100 requests per minute
-    });
 
-    it('should include auth-specific throttler with stricter limits', () => {
-      const { getThrottlerConfig } = require('../../src/config/rate-limit.config');
-      
-      const config = getThrottlerConfig();
-      
-      const authThrottler = config.throttlers.find((t: any) => t.name === 'auth');
-      expect(authThrottler).toBeDefined();
-      expect(authThrottler.ttl).toBe(60000); // 1 minute in ms
-      expect(authThrottler.limit).toBe(5); // 5 requests per minute for auth
+      if (Array.isArray(config)) {
+        throw new Error('Expected object throttler options');
+      }
+
+      expect(config.throttlers).toEqual([{ name: 'default', ttl: 60000, limit: 100 }]);
+    });
+  });
+
+  describe('getThrottlerGlobalGuardProvider', () => {
+    it('should register ThrottlerGuard as a global guard', () => {
+      expect(getThrottlerGlobalGuardProvider()).toEqual({
+        provide: APP_GUARD,
+        useClass: ThrottlerGuard,
+      });
     });
   });
 
   describe('applyRateLimiting', () => {
-    it('should return ThrottlerModule configured with throttlers', () => {
-      const { applyRateLimiting } = require('../../src/config/rate-limit.config');
-      
+    it('should return the configured ThrottlerModule', () => {
       const module = applyRateLimiting();
-      
+
       expect(module).toBeDefined();
       expect(module.module).toBeDefined();
+    });
+  });
+
+  describe('ThrottleAuth', () => {
+    it('should set a strict per-minute limit on the default throttler', () => {
+      class AuthController {
+        @ThrottleAuth()
+        login() {
+          return 'tokens';
+        }
+      }
+
+      const handler = AuthController.prototype.login;
+
+      expect(Reflect.getMetadata(THROTTLER_LIMIT + 'default', handler)).toBe(AUTH_THROTTLE_LIMIT);
+      expect(Reflect.getMetadata(THROTTLER_TTL + 'default', handler)).toBe(AUTH_THROTTLE_TTL);
+      expect(AUTH_THROTTLE_LIMIT).toBe(5);
+      expect(AUTH_THROTTLE_TTL).toBe(60000);
     });
   });
 });
