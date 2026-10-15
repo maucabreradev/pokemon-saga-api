@@ -6,13 +6,19 @@ import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { applyRateLimiting, getThrottlerGlobalGuardProvider } from './config/rate-limit.config';
-import { configuration, validationSchema } from './config';
+import {
+  configuration,
+  databaseConfig,
+  jwtConfig,
+  rateLimitConfig,
+  validationSchema,
+} from './config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [configuration],
+      load: [configuration, databaseConfig, jwtConfig, rateLimitConfig],
       validationSchema,
       envFilePath: ['.env.local', '.env'],
     }),
