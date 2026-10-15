@@ -1,0 +1,3 @@
+# Normalize line endings to LF on checkout/commit for all text files.
+# This keeps Prettier (endOfLine: lf) and ESLint green on every OS.
+* text=auto eol=lf

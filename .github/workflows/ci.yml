@@ -13,8 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -29,8 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -39,11 +35,8 @@ jobs:
       - run: pnpm test
       - name: Check coverage
         run: |
-          COVERAGE=$(pnpm test:cov --coverageReporters=json-summary | grep -o '"pct":[0-9.]*' | head -1 | cut -d: -f2)
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "Coverage $COVERAGE% is below 80% threshold"
-            exit 1
-          fi
+          pnpm test:cov --coverageReporters=json-summary
+          node -e "const pct = require('./coverage/coverage-summary.json').total.lines.pct; console.log('Total line coverage: ' + pct + '%'); if (pct < 80) { console.error('Coverage ' + pct + '% is below 80% threshold'); process.exit(1); }"
 
   integration-e2e-tests:
     name: Integration & E2E Tests
@@ -65,8 +58,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -96,8 +87,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -129,10 +118,5 @@ jobs:
           fi
       - name: Verify test coverage does not decrease
         run: |
-          pnpm test:cov
-          # Fail if coverage is below 80%
-          COVERAGE=$(cat coverage/coverage-summary.json | grep -o '"pct":[0-9.]*' | head -1 | cut -d: -f2)
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "Coverage $COVERAGE% is below 80% threshold"
-            exit 1
-          fi
+          pnpm test:cov --coverageReporters=json-summary
+          node -e "const pct = require('./coverage/coverage-summary.json').total.lines.pct; console.log('Total line coverage: ' + pct + '%'); if (pct < 80) { console.error('Coverage ' + pct + '% is below 80% threshold'); process.exit(1); }"

@@ -2,4 +2,3 @@ allowBuilds:
   '@nestjs/core': true
   '@scarf/scarf': true
   esbuild: true
-auto-approve-builds: true

@@ -1,4 +1,9 @@
-import helmet from 'helmet';
+import type { INestApplication } from '@nestjs/common';
+import {
+  applyCorsConfig,
+  applySecurityConfig,
+  getHelmetConfig,
+} from '../../src/config/security.config';
 
 describe('Security Configuration', () => {
   let mockApp: Record<string, jest.Mock>;
@@ -22,18 +27,14 @@ describe('Security Configuration', () => {
 
   describe('Helmet configuration', () => {
     it('should call app.use with helmet middleware', () => {
-      const { applySecurityConfig } = require('../../src/config/security.config');
-      
-      applySecurityConfig(mockApp);
-      
+      applySecurityConfig(mockApp as unknown as INestApplication);
+
       expect(useSpy).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('should configure helmet with expected security headers', () => {
-      const { getHelmetConfig } = require('../../src/config/security.config');
-      
       const config = getHelmetConfig();
-      
+
       expect(config).toBeDefined();
       expect(config.contentSecurityPolicy).toBeDefined();
       expect(config.crossOriginEmbedderPolicy).toBe(false);
@@ -53,15 +54,13 @@ describe('Security Configuration', () => {
 
   describe('CORS configuration', () => {
     it('should configure CORS with expected options', () => {
-      const { applyCorsConfig } = require('../../src/config/security.config');
-      
-      applyCorsConfig(mockApp);
-      
+      applyCorsConfig(mockApp as unknown as INestApplication);
+
       expect(mockApp.enableCors).toHaveBeenCalledWith(
         expect.objectContaining({
           origin: expect.any(String),
           credentials: true,
-        })
+        }),
       );
     });
   });

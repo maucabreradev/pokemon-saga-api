@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "REST API for a Pokémon role-playing forum",
   "license": "MIT",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
@@ -14,6 +15,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./tests/jest-e2e.json --passWithNoTests",
+    "test:integration": "jest --config ./tests/jest-integration.json --passWithNoTests",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
