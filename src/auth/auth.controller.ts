@@ -42,10 +42,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiOkResponse({
-    description: 'Access token issued successfully',
+    description: 'Access and refresh tokens issued successfully',
     schema: {
       example: {
         accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMSJ9.signature',
+        refreshToken: 'w7a8s9d0f1g2h3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3',
       },
     },
   })
