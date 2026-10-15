@@ -164,3 +164,19 @@
 **Consequences**:
 - Fresh checkouts stay LF on every OS; Prettier and ESLint agree everywhere
 - The one-time normalization touched 39 files with zero content change (verified by identical blob hashes)
+
+---
+
+## ADR-012: Refresh Token Reuse Detection with Family Revocation
+
+**Status**: Accepted
+
+**Context**: Rotation (ADR-003, TASK-017) kills the used token on each refresh, so a legitimate client never presents a revoked token twice. Presenting a revoked-but-unexpired token is therefore a compromise signal: either an attacker replayed a stolen token, or the legitimate client's retry raced rotation.
+
+**Decision**: When `POST /auth/refresh` receives a revoked-but-unexpired token, revoke the entire token family (`revokedAt` on all rows for that user) and return a generic 401. Expired tokens keep the plain 401 without family action (they are unusable either way). No grace window and no idempotent replay: that would require persisting the issued replacement pair (schema change) for a double-submit case that is rare with a well-behaved client.
+
+**Consequences**:
+- A stolen current token used by an attacker kills the whole family on the legitimate user's next refresh instead of silently handing the attacker a fresh session window
+- False positives log the user out everywhere on client double-submit; accepted tradeoff, documented here
+- The `revokeAllForUser` primitive is reused by TASK-019 (logout-all)
+- Grace window with idempotent replay stays a deferred refinement if double-submit proves to be a problem in practice

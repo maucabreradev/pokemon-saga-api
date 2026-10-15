@@ -282,7 +282,7 @@ describe('AuthService', () => {
       expect(jwtMock.signAsync).not.toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedError for an already revoked token', async () => {
+    it('should revoke the whole family when a revoked token is reused', async () => {
       const dto: RefreshDto = { refreshToken: rawToken };
       const revokedRow = { ...tokenRow, revokedAt: new Date(Date.now() - 1000) };
       const dbMock = createDbMock([revokedRow]);
@@ -290,6 +290,24 @@ describe('AuthService', () => {
       const service = createService(dbMock, jwtMock, createConfigMock());
 
       await expect(service.refresh(dto)).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(dbMock.update).toHaveBeenCalled();
+      expect(jwtMock.signAsync).not.toHaveBeenCalled();
+      expect(dbMock.insert).not.toHaveBeenCalled();
+    });
+
+    it('should not revoke the family for an expired token', async () => {
+      const dto: RefreshDto = { refreshToken: rawToken };
+      const expiredRevokedRow = {
+        ...tokenRow,
+        expiresAt: new Date(Date.now() - 1000),
+        revokedAt: new Date(Date.now() - 2000),
+      };
+      const dbMock = createDbMock([expiredRevokedRow]);
+      const jwtMock = createJwtMock();
+      const service = createService(dbMock, jwtMock, createConfigMock());
+
+      await expect(service.refresh(dto)).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(dbMock.update).not.toHaveBeenCalled();
       expect(jwtMock.signAsync).not.toHaveBeenCalled();
     });
   });

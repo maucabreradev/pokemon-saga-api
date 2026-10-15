@@ -133,7 +133,12 @@ export class AuthService {
       .where(eq(refreshTokens.tokenHash, tokenHash))
       .limit(1);
 
-    if (!stored || stored.revokedAt || stored.expiresAt.getTime() <= Date.now()) {
+    if (!stored || stored.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    if (stored.revokedAt) {
+      await this.revokeAllForUser(stored.userId);
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
 
@@ -161,5 +166,12 @@ export class AuthService {
     const refreshToken = await this.issueRefreshToken(user.id);
 
     return { accessToken, refreshToken };
+  }
+
+  async revokeAllForUser(userId: string): Promise<void> {
+    await this.db
+      .update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(refreshTokens.userId, userId));
   }
 }
