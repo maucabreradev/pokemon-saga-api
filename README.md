@@ -78,4 +78,4 @@ src/
 
 ## License
 
-MIT
+This project is released into the public domain under [The Unlicense](LICENSE).

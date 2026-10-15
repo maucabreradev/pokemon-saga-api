@@ -15,6 +15,7 @@ Apply in GitHub: Settings > Branches > Add branch protection rule > Branch name 
 - Require status checks to pass before merging
   - Require branches to be up to date before merging
   - Required checks: `Lint`, `Unit Tests`, `Integration & E2E Tests`, `TDD & Migration Enforcement`
+  - `Coverage (informational)` is NOT required (expected to fail until Phase 9 per ADR-010; signal, not gate)
 - Require linear history (squash merge only, no merge commits)
 - Include administrators
 - Do not allow bypassing the above settings
@@ -25,12 +26,12 @@ Apply in GitHub: Settings > Branches > Add branch protection rule > Branch name 
 Apply in GitHub: Settings > Branches > Add branch protection rule > Branch name pattern `develop`.
 
 - Require a pull request before merging
-  - Required approvals: 1
+  - Required approvals: 0 (solo developer: the author cannot approve their own PR, so no approval can be required on `develop`; keep 1 approval on `main`)
   - Dismiss stale pull request approvals when new commits are pushed
-  - Require review from Code Owners
 - Require status checks to pass before merging
   - Require branches to be up to date before merging
   - Required checks: `Lint`, `Unit Tests`, `Integration & E2E Tests`, `TDD & Migration Enforcement`
+  - `Coverage (informational)` is NOT required (expected to fail until Phase 9 per ADR-010; signal, not gate)
 - Require linear history (squash merge only, no merge commits)
 - Include administrators
 - Do not allow bypassing the above settings
