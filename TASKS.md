@@ -32,7 +32,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-017** — Implement token refresh endpoint with rotation
 - [x] **TASK-018** — Implement logout (single session)
 - [x] **TASK-019** — Implement logout-all (revoke all sessions)
-- [ ] **TASK-020** — Create AuthGuard and @CurrentUser decorator
+- [x] **TASK-020** — Create AuthGuard and @CurrentUser decorator
 - [ ] **TASK-021** — Create @Roles() decorator and RolesGuard
 - [ ] **TASK-022** — Add rate limiting to auth endpoints
 
