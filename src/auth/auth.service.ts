@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { refreshTokens } from '../database/schema/refresh-tokens';
 import { users } from '../database/schema/users';
@@ -80,7 +80,7 @@ export class AuthService {
         role: users.role,
       })
       .from(users)
-      .where(eq(users.email, dto.email))
+      .where(and(eq(users.email, dto.email), isNull(users.deletedAt)))
       .limit(1);
 
     if (!user) {

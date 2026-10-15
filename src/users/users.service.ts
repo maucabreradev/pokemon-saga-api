@@ -48,7 +48,7 @@ export class UsersService {
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
       .limit(1);
 
     if (!user) {
@@ -67,7 +67,7 @@ export class UsersService {
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
       .limit(1);
 
     if (!current) {
@@ -110,7 +110,7 @@ export class UsersService {
     const [user] = await this.db
       .select({ id: users.id, passwordHash: users.passwordHash })
       .from(users)
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), isNull(users.deletedAt)))
       .limit(1);
 
     if (!user) {
@@ -178,5 +178,43 @@ export class UsersService {
         ),
       )
       .orderBy(desc(refreshTokens.createdAt));
+  }
+
+  async deleteMe(userId: string): Promise<void> {
+    const [user] = await this.db
+      .select({ id: users.id, deletedAt: users.deletedAt })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      throw new NotFoundError('User', userId);
+    }
+
+    if (user.deletedAt) {
+      return;
+    }
+
+    const now = new Date();
+
+    await this.db.transaction(async (tx) => {
+      await tx.update(users).set({ deletedAt: now, updatedAt: now }).where(eq(users.id, userId));
+
+      await tx
+        .update(refreshTokens)
+        .set({ revokedAt: now })
+        .where(eq(refreshTokens.userId, userId));
+
+      await tx
+        .update(characters)
+        .set({ status: 'deleted', deletedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(characters.userId, userId),
+            ne(characters.status, 'deleted'),
+            isNull(characters.deletedAt),
+          ),
+        );
+    });
   }
 }

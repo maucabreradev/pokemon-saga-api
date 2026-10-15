@@ -111,6 +111,14 @@ describe('UsersService', () => {
 
       await expect(service.getMe(userId)).rejects.toBeInstanceOf(NotFoundError);
     });
+
+    it('should exclude soft-deleted users', async () => {
+      const dbMock = createDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(service.getMe(userId)).rejects.toBeInstanceOf(NotFoundError);
+      expect(isNull).toHaveBeenCalledWith(users.deletedAt);
+    });
   });
 
   describe('updateEmail', () => {
@@ -188,6 +196,14 @@ describe('UsersService', () => {
 
       await expect(service.updateEmail(userId, newEmail)).rejects.toBeInstanceOf(NotFoundError);
       expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should exclude soft-deleted users', async () => {
+      const { dbMock } = createUpdateDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(service.updateEmail(userId, newEmail)).rejects.toBeInstanceOf(NotFoundError);
+      expect(isNull).toHaveBeenCalledWith(users.deletedAt);
     });
   });
 
@@ -269,6 +285,16 @@ describe('UsersService', () => {
       expect(mockedCompare).not.toHaveBeenCalled();
       expect(mockedHash).not.toHaveBeenCalled();
       expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should exclude soft-deleted users', async () => {
+      const { dbMock } = createPasswordDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(
+        service.changePassword(userId, 'pikachu-25-forever', 'charizard-06-forever'),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(isNull).toHaveBeenCalledWith(users.deletedAt);
     });
   });
 
@@ -369,6 +395,75 @@ describe('UsersService', () => {
       const service = createService(dbMock);
 
       await expect(service.getMySessions(userId)).resolves.toEqual([]);
+    });
+  });
+
+  describe('deleteMe', () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const activeRow = { id: userId, deletedAt: null };
+    const deletedRow = { id: userId, deletedAt: new Date('2026-10-15T00:00:00.000Z') };
+
+    function createDeleteDbMock(userRows: unknown[] = []) {
+      const limitMock = jest.fn().mockResolvedValue(userRows);
+      const userWhereMock = jest.fn().mockResolvedValue([]);
+      const userSetMock = jest.fn().mockReturnValue({ where: userWhereMock });
+      const tokenWhereMock = jest.fn().mockResolvedValue([]);
+      const tokenSetMock = jest.fn().mockReturnValue({ where: tokenWhereMock });
+      const charWhereMock = jest.fn().mockResolvedValue([]);
+      const charSetMock = jest.fn().mockReturnValue({ where: charWhereMock });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const txUpdate = jest.fn((table: any) => {
+        if (table === users) return { set: userSetMock };
+        if (table === refreshTokens) return { set: tokenSetMock };
+        return { set: charSetMock };
+      });
+      const transactionMock = jest.fn((cb: (tx: unknown) => unknown) => cb({ update: txUpdate }));
+      const dbMock = {
+        select: jest.fn().mockReturnValue({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({ limit: limitMock }),
+          }),
+        }),
+        update: jest.fn(),
+        transaction: transactionMock,
+      };
+      return { dbMock, transactionMock, txUpdate, userSetMock, tokenSetMock, charSetMock };
+    }
+
+    it('should soft delete the user, revoke sessions, and soft delete characters in one transaction', async () => {
+      const { dbMock, transactionMock, userSetMock, tokenSetMock, charSetMock } =
+        createDeleteDbMock([activeRow]);
+      const service = createService(dbMock);
+
+      await expect(service.deleteMe(userId)).resolves.toBeUndefined();
+
+      expect(transactionMock).toHaveBeenCalledTimes(1);
+      const userSetValues = userSetMock.mock.calls[0][0];
+      expect(userSetValues.deletedAt).toBeInstanceOf(Date);
+      expect(userSetValues.updatedAt).toBeInstanceOf(Date);
+      const tokenSetValues = tokenSetMock.mock.calls[0][0];
+      expect(tokenSetValues.revokedAt).toBeInstanceOf(Date);
+      const charSetValues = charSetMock.mock.calls[0][0];
+      expect(charSetValues.status).toBe('deleted');
+      expect(charSetValues.deletedAt).toBeInstanceOf(Date);
+      expect(charSetValues.updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should return without writing when the user is already deleted', async () => {
+      const { dbMock, transactionMock } = createDeleteDbMock([deletedRow]);
+      const service = createService(dbMock);
+
+      await expect(service.deleteMe(userId)).resolves.toBeUndefined();
+      expect(transactionMock).not.toHaveBeenCalled();
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when the user does not exist', async () => {
+      const { dbMock, transactionMock } = createDeleteDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(service.deleteMe(userId)).rejects.toBeInstanceOf(NotFoundError);
+      expect(transactionMock).not.toHaveBeenCalled();
     });
   });
 });

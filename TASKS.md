@@ -43,7 +43,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-025** — Implement PATCH /users/me/password
 - [x] **TASK-026** — Implement GET /users/me/characters
 - [x] **TASK-027** — Implement GET /users/me/sessions
-- [ ] **TASK-028** — Implement DELETE /users/me (soft delete)
+- [x] **TASK-028** — Implement DELETE /users/me (soft delete)
 - [ ] **TASK-029** — Implement character creation (max 3 per user)
 - [ ] **TASK-030** — Implement human-readable ID generator
 - [ ] **TASK-031** — Implement GET /characters/:readableId (public profile)
