@@ -1,25 +1,22 @@
 # Project State
 
 **Last updated**: 2026-10-15
-**Current phase**: Phase 3 — Users & Characters (TASK-030 complete out of order, next TASK-029)
+**Current phase**: Phase 3 — Users & Characters (TASK-029 complete, next TASK-031)
 
 ## Current Status
 
-Phase 2 is complete. TASK-030 (readable ID generator) implemented as pure functions in `src/common/utils`: format generation, unique-with-retry via injected existence check, and validation for the TASK-033 rename. Done before TASK-029 which depends on it. Next is TASK-029 (character creation, max 3 per user).
+Phase 2 is complete. TASK-029 (POST /characters) implemented via CharactersModule with CharactersService.create and CharactersController.create. Enforces max 3 active characters per user (403), generates readableId via TASK-030 generator, creates profile with bio, sets first as main, returns 201 with full resource. Throttle 3 req/hour via ThrottleCharacterCreation. Next is TASK-031 (GET /characters/:readableId).
 
 ## Last Completed
 
+- **TASK-029** — Implement character creation (max 3 per user): CharactersModule with service+controller; max 3 enforced (403), readableId via generator, profile with bio, first=main, 201 with full resource, throttle 3/h; 123/126 unit and 3/3 e2e pass, lint clean, no migration.
 - **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
-- **TASK-028** — Implement DELETE /users/me (soft delete): D1–D5 contract (idempotent 204, generic login 401, filters on login/getMe/updates, cascade deleted+deletedAt, single transaction); 98/98 unit and 3/3 e2e pass, lint clean, no migration needed (column from 0002).
-
-## Next Task
-
-- **TASK-029** — Implement character creation (max 3 per user).
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-029 | POST /characters via CharactersModule (max 3/user, readableId generator, profile, throttle 3/h); 123/126 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-030 | Readable ID generator (pure utils, unique-with-retry, validation); done before TASK-029 which needs it; 115/115 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-028 | DELETE /users/me via UsersService.deleteMe (transaction: user deletedAt, revoke tokens, cascade characters; idempotent 204, generic login 401); 98/98 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-027 | GET /users/me/sessions via UsersService (active sessions newest-first, hashes never exposed); 90/90 unit, 3/3 e2e, no migration |
