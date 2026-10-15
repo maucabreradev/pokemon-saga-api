@@ -174,4 +174,13 @@ export class AuthService {
       .set({ revokedAt: new Date() })
       .where(eq(refreshTokens.userId, userId));
   }
+
+  async logout(refreshToken: string): Promise<void> {
+    const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+
+    await this.db
+      .update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(refreshTokens.tokenHash, tokenHash));
+  }
 }
