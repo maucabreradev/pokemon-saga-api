@@ -1,9 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import {
-  applyCorsConfig,
-  applySecurityConfig,
-  getHelmetConfig,
-} from '../../src/config/security.config';
+import { applyCorsConfig, applySecurityConfig, getHelmetConfig } from './security.config';
 
 describe('Security Configuration', () => {
   let mockApp: Record<string, jest.Mock>;

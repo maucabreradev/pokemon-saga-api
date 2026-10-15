@@ -8,7 +8,7 @@ import {
   applyRateLimiting,
   getThrottlerConfig,
   getThrottlerGlobalGuardProvider,
-} from '../../src/config/rate-limit.config';
+} from './rate-limit.config';
 
 describe('Rate Limiting Configuration', () => {
   describe('getThrottlerConfig', () => {

@@ -13,10 +13,6 @@ import { configuration, validationSchema } from './config';
       isGlobal: true,
       load: [configuration],
       validationSchema,
-      validationOptions: {
-        abortEarly: true,
-        allowUnknown: true,
-      } as any,
       envFilePath: ['.env.local', '.env'],
     }),
     DatabaseModule,

@@ -13,7 +13,7 @@ export class ValidationPipe implements PipeTransform<unknown> {
       return value;
     }
 
-    const object = plainToInstance(metatype, value);
+    const object = plainToInstance(metatype, value, { enableImplicitConversion: true });
     const errors = await validate(object, {
       whitelist: true,
       forbidNonWhitelisted: true,

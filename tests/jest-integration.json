@@ -4,9 +4,19 @@
   "rootDir": "..",
   "testRegex": ".*\\.integration-spec\\.ts$",
   "transform": {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": "ts-jest",
+    "^.+\\.js$": [
+      "babel-jest",
+      {
+        "configFile": false,
+        "babelrc": false,
+        "plugins": ["@babel/plugin-transform-modules-commonjs"]
+      }
+    ]
   },
+  "transformIgnorePatterns": [],
   "moduleNameMapper": {
-    "^src/(.*)$": "<rootDir>/src/$1"
+    "^src/(.*)$": "<rootDir>/src/$1",
+    "^@nestjs/swagger$": "<rootDir>/tests/e2e/swagger.stub.js"
   }
 }

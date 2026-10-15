@@ -57,8 +57,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       return {
         statusCode: status,
-        message:
-          typeof response === 'string' ? response : (response as any).message || exception.message,
+        message: this.extractMessage(response, exception.message),
         error: exception.name,
         timestamp,
         path,
@@ -82,5 +81,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp,
       path,
     };
+  }
+
+  private extractMessage(response: string | object, fallback: string): string | string[] {
+    if (typeof response === 'string') {
+      return response;
+    }
+    const message: unknown = (response as { message?: unknown }).message;
+    return (message || fallback) as string | string[];
   }
 }

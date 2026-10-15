@@ -1,5 +1,4 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
@@ -19,18 +18,8 @@ async function bootstrap() {
   // CORS
   applyCorsConfig(app);
 
-  // Global pipes
-  app.useGlobalPipes(
-    new CustomValidationPipe(),
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-    }),
-  );
+  // Global pipes (single custom pipe: whitelist + forbidNonWhitelisted + transform)
+  app.useGlobalPipes(new CustomValidationPipe());
 
   // Global interceptors
   app.useGlobalInterceptors(new ResponseInterceptor());

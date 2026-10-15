@@ -2,7 +2,7 @@ import { Controller, Get, INestApplication, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerModule } from '@nestjs/throttler';
 import request from 'supertest';
-import { getThrottlerGlobalGuardProvider } from '../../src/config/rate-limit.config';
+import { getThrottlerGlobalGuardProvider } from './rate-limit.config';
 
 @Controller('ping')
 class PingController {
