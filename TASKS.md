@@ -34,7 +34,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-019** — Implement logout-all (revoke all sessions)
 - [x] **TASK-020** — Create AuthGuard and @CurrentUser decorator
 - [x] **TASK-021** — Create @Roles() decorator and RolesGuard
-- [ ] **TASK-022** — Add rate limiting to auth endpoints
+- [x] **TASK-022** — Add rate limiting to auth endpoints
 
 ## Phase 3 — Users & Characters
 
