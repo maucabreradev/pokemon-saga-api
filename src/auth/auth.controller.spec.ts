@@ -1,6 +1,7 @@
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 
 // @nestjs/swagger ships ESM-only dist that Jest (CJS) cannot parse.
@@ -36,10 +37,10 @@ jest.mock('../database/database.module', () => ({
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let service: { register: jest.Mock; login: jest.Mock };
+  let service: { register: jest.Mock; login: jest.Mock; refresh: jest.Mock };
 
   beforeEach(() => {
-    service = { register: jest.fn(), login: jest.fn() };
+    service = { register: jest.fn(), login: jest.fn(), refresh: jest.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new AuthController(service as any as AuthService);
   });
@@ -74,6 +75,20 @@ describe('AuthController', () => {
 
       await expect(controller.login(dto)).resolves.toEqual(tokens);
       expect(service.login).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe('refresh', () => {
+    it('should delegate to the service and return the new token pair', async () => {
+      const dto: RefreshDto = { refreshToken: 'old-raw-refresh-token' };
+      const tokens = {
+        accessToken: 'new-signed-access-token',
+        refreshToken: 'new-raw-refresh-token',
+      };
+      service.refresh.mockResolvedValue(tokens);
+
+      await expect(controller.refresh(dto)).resolves.toEqual(tokens);
+      expect(service.refresh).toHaveBeenCalledWith(dto);
     });
   });
 });
