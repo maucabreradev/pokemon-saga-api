@@ -1,24 +1,25 @@
 # Project State
 
 **Last updated**: 2026-10-15
-**Current phase**: Phase 3 — Users & Characters (TASK-023 complete, next TASK-024)
+**Current phase**: Phase 3 — Users & Characters (TASK-024 complete, next TASK-025)
 
 ## Current Status
 
-Phase 2 is complete. TASK-023 (GET /users/me) implemented via new UsersModule with UsersService.getMe and UsersController, protected by the global AuthGuard. Returns only id/email/role/createdAt, throws 404 when the user row is missing. Next is TASK-024 (PATCH /users/me).
+Phase 2 is complete. TASK-024 (PATCH /users/me) implemented via UpdateUserDto plus UsersService.updateEmail and UsersController.updateMe. Returns the public profile, idempotent on unchanged email, 409 on taken email, 404 when missing, 400 via global ValidationPipe. Next is TASK-025 (PATCH /users/me/password).
 
 ## Last Completed
 
-- **TASK-023** — Implement GET /users/me endpoint: New UsersModule (service + controller) returning the public profile for the Bearer identity, 404 via NotFoundError when missing; 65/65 unit and 3/3 e2e pass, lint clean, no migration needed.
+- **TASK-024** — Implement PATCH /users/me (update email): UpdateUserDto with email validation, service checks ownership/uniqueness and refreshes updatedAt explicitly, controller documents 400/409/404; 73/73 unit and 3/3 e2e pass, lint clean, no migration needed. Timestamp convention documented in DB.md.
 
 ## Next Task
 
-- **TASK-024** — Implement PATCH /users/me (update email).
+- **TASK-025** — Implement PATCH /users/me/password.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-024 | PATCH /users/me via UpdateUserDto (idempotent, 409 taken, explicit updatedAt); 73/73 unit, 3/3 e2e, no migration; timestamp convention in DB.md |
 | 2026-10-15 | TASK-023 | GET /users/me via UsersModule (public profile only, 404 when missing); 65/65 unit, 3/3 e2e, no migration |
 | 2026-10-15 | FIX | Hygiene: scaffold removed, JWT fallback dropped, env placeholder fails closed, ADR-010 superseded, e2e aligned with production pipeline |
 | 2026-10-15 | FIX | Schema constraints: friendships pair unique + refresh token hash/user indexes with migration, DB.md updated |
@@ -69,8 +70,9 @@ Phase 2 is complete. TASK-023 (GET /users/me) implemented via new UsersModule wi
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-024 - Implement PATCH /users/me (update email)
+- Next: TASK-025 - Implement PATCH /users/me/password
 - Users module: `UsersService.getMe` selects only id/email/role/createdAt, throws NotFoundError (404) when missing; `GET /users/me` uses `@CurrentUser('sub')`, Bearer required, documented under `Users` tag
+- Users email update: `UpdateUserDto` validates format (400 via global pipe); `updateEmail` returns current profile idempotently on same email, 409 via ConflictError when taken, explicit `updatedAt: new Date()` per DB.md timestamp convention
 - Auth module: all 5 routes carry `@ThrottleAuth()` (proven by e2e); logout still takes refresh token in body, logout-all on Bearer
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch

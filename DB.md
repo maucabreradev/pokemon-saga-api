@@ -113,6 +113,13 @@ Characters, topics, and posts use soft deletes:
 - Admin can restore by clearing `deleted_at`
 - Banned characters also use soft delete with `status = 'banned'`
 
+## Timestamp Convention
+
+`created_at` and `updated_at` use `defaultNow()`, which only applies on `INSERT`.
+Every `UPDATE` must set `updated_at: new Date()` explicitly — neither PostgreSQL
+nor Drizzle refreshes it automatically. (A schema-level `$onUpdate()` for all
+tables stays a deferred follow-up after Phase 3.)
+
 ## Connection Pooling
 
 Drizzle uses a connection pool configured via `DATABASE_URL`. Default pool size is 10 connections, configurable via `DB_POOL_SIZE` environment variable.
