@@ -1,0 +1,146 @@
+# Testing Strategy
+
+## TDD — Test-Driven Development (MANDATORY)
+
+**Every feature and bugfix MUST follow TDD. No exceptions.**
+
+The workflow for every task:
+
+1. **RED** — Write a failing test first
+   - Run it, verify it fails for the expected reason
+2. **GREEN** — Write minimum code to pass
+   - Run it, verify it passes
+3. **REFACTOR** — Clean up while keeping tests green
+   - Run full suite, verify no regressions
+
+### Iron Law
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+If code was written before the test: delete it, start over.
+
+### Definition of Done
+
+A task is not complete until:
+- Tests were written before implementation
+- Each test was verified to fail before implementing
+- All tests pass
+- No regressions in existing tests
+
+## Overview
+
+Testing is structured in three layers: unit tests, integration tests, and end-to-end (e2e) tests. All tests are written in English and follow the Arrange-Act-Assert pattern. TDD is mandatory for all new features and bugfixes.
+
+## Test Layers
+
+```
+┌─────────────────────────────────────┐
+│         E2E Tests                   │  ← Full request lifecycle
+│    (supertest + test DB)            │
+├─────────────────────────────────────┤
+│      Integration Tests              │  ← Service + DB interaction
+│    (test containers)                │
+├─────────────────────────────────────┤
+│         Unit Tests                  │  ← Isolated functions/classes
+│    (jest mocks)                     │
+└─────────────────────────────────────┘
+```
+
+## Unit Tests
+
+- **Location**: `src/**/*.spec.ts` (colocated with source)
+- **Runner**: Jest
+- **Coverage target**: 80%+ on services and utilities
+- **Mocking**: Database calls, external services, and heavy dependencies
+
+```typescript
+describe('AuthService', () => {
+  describe('login', () => {
+    it('should return tokens for valid credentials', () => {
+      // Arrange
+      // Act
+      // Assert
+    });
+
+    it('should throw UnauthorizedException for invalid password', () => {
+      // Arrange
+      // Act
+      // Assert
+    });
+  });
+});
+```
+
+## Integration Tests
+
+- **Location**: `tests/integration/`
+- **Purpose**: Verify service + database interaction
+- **Database**: Dedicated test database (separate from dev/prod)
+- **Setup**: Run migrations before tests, truncate tables between tests
+
+```typescript
+describe('CharactersService (Integration)', () => {
+  it('should create character with generated readable ID', async () => {
+    const character = await service.createCharacter(userId, dto);
+    expect(character.readableId).toMatch(/^[A-Z][a-z]+/);
+  });
+});
+```
+
+## E2E Tests
+
+- **Location**: `tests/e2e/`
+- **Runner**: Jest + Supertest
+- **Purpose**: Full HTTP request lifecycle testing
+- **Setup**: Bootstrap the full NestJS app with test database
+
+```typescript
+describe('AuthController (E2E)', () => {
+  it('POST /auth/register should create a new user', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send(validRegisterDto)
+      .expect(201);
+
+    expect(response.body).toHaveProperty('id');
+  });
+});
+```
+
+## Running Tests
+
+```bash
+# Unit tests
+pnpm test
+
+# Integration tests
+pnpm test:integration
+
+# E2E tests
+pnpm test:e2e
+
+# All tests with coverage
+pnpm test:cov
+
+# Watch mode (development)
+pnpm test:watch
+```
+
+## Test Commands in CI
+
+```yaml
+# GitHub Actions example
+- run: pnpm install
+- run: pnpm db:generate
+- run: pnpm test
+- run: pnpm test:e2e
+```
+
+## Test Data
+
+- Use factories (not fixtures) for generating test data
+- Each test creates and cleans up its own data
+- Never depend on execution order
+- Use `faker` library for realistic fake data
