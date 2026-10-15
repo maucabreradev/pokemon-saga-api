@@ -1,14 +1,15 @@
 # Project State
 
 **Last updated**: 2026-10-15
-**Current phase**: Phase 3 — Users & Characters (TASK-028 complete, next TASK-029)
+**Current phase**: Phase 3 — Users & Characters (TASK-030 complete out of order, next TASK-029)
 
 ## Current Status
 
-Phase 2 is complete. TASK-028 (DELETE /users/me) implemented via UsersService.deleteMe (transaction: user deletedAt, token revocation, characters cascade) and UsersController.deleteMe (204, idempotent). Login/getMe/updates filter soft-deleted users; login keeps the generic 401. Next is TASK-029 (character creation, max 3 per user).
+Phase 2 is complete. TASK-030 (readable ID generator) implemented as pure functions in `src/common/utils`: format generation, unique-with-retry via injected existence check, and validation for the TASK-033 rename. Done before TASK-029 which depends on it. Next is TASK-029 (character creation, max 3 per user).
 
 ## Last Completed
 
+- **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
 - **TASK-028** — Implement DELETE /users/me (soft delete): D1–D5 contract (idempotent 204, generic login 401, filters on login/getMe/updates, cascade deleted+deletedAt, single transaction); 98/98 unit and 3/3 e2e pass, lint clean, no migration needed (column from 0002).
 
 ## Next Task
@@ -19,6 +20,7 @@ Phase 2 is complete. TASK-028 (DELETE /users/me) implemented via UsersService.de
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-030 | Readable ID generator (pure utils, unique-with-retry, validation); done before TASK-029 which needs it; 115/115 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-028 | DELETE /users/me via UsersService.deleteMe (transaction: user deletedAt, revoke tokens, cascade characters; idempotent 204, generic login 401); 98/98 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-027 | GET /users/me/sessions via UsersService (active sessions newest-first, hashes never exposed); 90/90 unit, 3/3 e2e, no migration |
 | 2026-10-15 | MIG-002 | users.deleted_at column + migration 0002 (ADR-013 soft-delete shape, cascade + filters land in TASK-028) |
@@ -75,7 +77,7 @@ Phase 2 is complete. TASK-028 (DELETE /users/me) implemented via UsersService.de
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-029 - Implement character creation (max 3 per user)
+- Next: TASK-029 - Implement character creation (max 3 per user, uses TASK-030 generator)
 - Users module: `UsersService.getMe` selects only id/email/role/createdAt, throws NotFoundError (404) when missing; `GET /users/me` uses `@CurrentUser('sub')`, Bearer required, documented under `Users` tag
 - Users email update: `UpdateUserDto` validates format (400 via global pipe); `updateEmail` returns current profile idempotently on same email, 409 via ConflictError when taken, explicit `updatedAt: new Date()` per DB.md timestamp convention
 - Users password change: `ChangePasswordDto` (min 8, max 64); `changePassword` verifies current (401), rejects same-as-current (400), bcrypt 12 re-hash, explicit `updatedAt`, revokes all refresh tokens, 204 No Content
