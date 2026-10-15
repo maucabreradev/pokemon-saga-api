@@ -5,28 +5,28 @@
 
 ## Current Status
 
-Phase 1 is in progress. TASK-002 (Configure TypeScript, ESLint, Prettier) has been completed. The project now has ESLint 9 with flat config, Prettier, and TypeScript strict mode fully configured. All code passes lint and format checks.
+Phase 1 is in progress. TASK-003 (Set up Docker Compose) has been completed. The API and PostgreSQL now run via Docker Compose with an internal bridge network. The database is not exposed to the host — only accessible from the API service. A development override file provides hot-reload and DB port access for local development.
 
 ## Last Completed
 
-- **TASK-002** — Configure TypeScript, ESLint, Prettier: Set up ESLint 9 with flat config, added Prettier with project conventions, configured globals for Node.js and Jest, added lint/format scripts to package.json, verified lint and tests pass.
+- **TASK-003** — Set up Docker Compose: Created multi-stage Dockerfile (deps → build → production), compose.yaml with internal network and health checks, compose.override.yaml for development with hot-reload, .dockerignore, and .env.example with all required configuration.
 
 ## Next Task
 
-- **TASK-003** — Set up Docker Compose (API + PostgreSQL): Create Dockerfile with multi-stage build, docker-compose.yml with internal network, .dockerignore, .env.example, verify both services start correctly.
+- **TASK-004** — Configure Drizzle ORM with PostgreSQL connection: Install drizzle-orm and drizzle-kit, create drizzle.config.ts, set up database module with connection pool, add db scripts to package.json, verify connection to Docker PostgreSQL.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
-| 2026-10-14 | TASK-002 | Configured ESLint 9 with flat config, Prettier, and TypeScript globals for Node/Jest |
-| 2026-10-14 | TASK-001 | Initialized NestJS project with pnpm, configured TypeScript build, added basic app structure with passing test |
+| 2026-10-14 | TASK-003 | Docker Compose with internal network, multi-stage Dockerfile, health checks |
+| 2026-10-14 | TASK-002 | ESLint 9 with flat config, Prettier, TypeScript globals |
+| 2026-10-14 | TASK-001 | NestJS project scaffolded with pnpm |
 
 ## Context for Next Session
 
-- ESLint 9 with flat config is working (`pnpm lint`)
-- Prettier is configured and format check works (`pnpm format:check`)
-- TypeScript strict mode enabled with decorator support
-- Jest configured with ts-jest preset (1 test passing)
-- Next task is TASK-003: Docker Compose setup for API + PostgreSQL
+- Docker Compose validated with `docker compose config --quiet`
+- DB has no exposed ports in production compose — internal network only
+- compose.override.yaml auto-loads for development (adds DB port 5432 + hot-reload)
+- Next: TASK-004 — Drizzle ORM configuration with PostgreSQL
 - Git workflow: feature branch → squash merge → develop → delete feature branch

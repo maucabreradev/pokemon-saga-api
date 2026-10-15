@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.git
+.github
+.scratch
+.env
+.env.local
+*.log
+.pnpm-store
+tsconfig.tsbuildinfo
+.docker

@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      target: deps
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/pokemon_saga
+      - JWT_SECRET=dev-secret-key-not-for-production
+      - NODE_ENV=development
+      - PORT=3000
+    command: pnpm dev
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: rebuild
+          path: package.json
+          target: /app/package.json
+
+  db:
+    ports:
+      - "5432:5432"
