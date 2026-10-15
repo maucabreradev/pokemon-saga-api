@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { and, asc, eq, isNull, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNull, ne } from 'drizzle-orm';
 import {
   ConflictError,
   NotFoundError,
@@ -25,6 +25,12 @@ export interface CharacterSummary {
   publicName: string;
   status: 'active' | 'banned' | 'deleted';
   isMainCharacter: boolean;
+}
+
+export interface SessionSummary {
+  id: string;
+  createdAt: Date;
+  expiresAt: Date;
 }
 
 const BCRYPT_SALT_ROUNDS = 12;
@@ -154,5 +160,23 @@ export class UsersService {
         ),
       )
       .orderBy(asc(characters.createdAt));
+  }
+
+  async getMySessions(userId: string): Promise<SessionSummary[]> {
+    return this.db
+      .select({
+        id: refreshTokens.id,
+        createdAt: refreshTokens.createdAt,
+        expiresAt: refreshTokens.expiresAt,
+      })
+      .from(refreshTokens)
+      .where(
+        and(
+          eq(refreshTokens.userId, userId),
+          isNull(refreshTokens.revokedAt),
+          gt(refreshTokens.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(refreshTokens.createdAt));
   }
 }

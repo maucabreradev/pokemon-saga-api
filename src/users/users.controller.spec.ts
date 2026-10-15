@@ -31,6 +31,7 @@ describe('UsersController', () => {
     updateEmail: jest.Mock;
     changePassword: jest.Mock;
     getMyCharacters: jest.Mock;
+    getMySessions: jest.Mock;
   };
 
   beforeEach(() => {
@@ -39,6 +40,7 @@ describe('UsersController', () => {
       updateEmail: jest.fn(),
       changePassword: jest.fn(),
       getMyCharacters: jest.fn(),
+      getMySessions: jest.fn(),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new UsersController(service as any as UsersService);
@@ -111,6 +113,23 @@ describe('UsersController', () => {
 
       await expect(controller.getMyCharacters(userId)).resolves.toEqual(list);
       expect(service.getMyCharacters).toHaveBeenCalledWith(userId);
+    });
+  });
+
+  describe('getMySessions', () => {
+    it('should delegate to the service with the current user id', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
+      const list = [
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          createdAt: new Date('2026-10-15T10:00:00.000Z'),
+          expiresAt: new Date('2026-11-14T10:00:00.000Z'),
+        },
+      ];
+      service.getMySessions.mockResolvedValue(list);
+
+      await expect(controller.getMySessions(userId)).resolves.toEqual(list);
+      expect(service.getMySessions).toHaveBeenCalledWith(userId);
     });
   });
 });
