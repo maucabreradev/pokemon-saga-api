@@ -1,8 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
+import { refreshTokens } from '../database/schema/refresh-tokens';
 import { users } from '../database/schema/users';
 import { ConflictError, UnauthorizedError } from '../common/exceptions/app-errors';
 import { LoginDto } from './dto/login.dto';
@@ -15,17 +18,30 @@ export interface RegisteredUser {
   createdAt: Date;
 }
 
-export interface AccessToken {
+export interface AuthTokens {
   accessToken: string;
+  refreshToken: string;
 }
 
 const BCRYPT_SALT_ROUNDS = 12;
+const REFRESH_TOKEN_BYTES = 48;
+
+// Matches validation.schema.ts: /^\d+[mhd]$/ (e.g. '15m', '1h', '30d').
+function parseExpiryToMs(expiry: string): number {
+  const amount = parseInt(expiry.slice(0, -1), 10);
+  const unit = expiry.slice(-1);
+
+  if (unit === 'm') return amount * 60 * 1000;
+  if (unit === 'h') return amount * 60 * 60 * 1000;
+  return amount * 24 * 60 * 60 * 1000;
+}
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto): Promise<RegisteredUser> {
@@ -54,7 +70,7 @@ export class AuthService {
     return created;
   }
 
-  async login(dto: LoginDto): Promise<AccessToken> {
+  async login(dto: LoginDto): Promise<AuthTokens> {
     const [user] = await this.db
       .select({
         id: users.id,
@@ -82,6 +98,23 @@ export class AuthService {
       role: user.role,
     });
 
-    return { accessToken };
+    const refreshToken = await this.issueRefreshToken(user.id);
+
+    return { accessToken, refreshToken };
+  }
+
+  async issueRefreshToken(userId: string): Promise<string> {
+    const refreshToken = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
+    const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+    const expiresAt = new Date(
+      Date.now() + parseExpiryToMs(this.configService.getOrThrow<string>('jwt.refreshTokenExpiry')),
+    );
+
+    await this.db
+      .insert(refreshTokens)
+      .values({ userId, tokenHash, expiresAt })
+      .returning({ id: refreshTokens.id });
+
+    return refreshToken;
   }
 }
