@@ -1,2 +1,12 @@
-// Schema files will be added in TASK-005 (Create database schema)
 export * from './users';
+export * from './characters';
+export * from './characters-profile';
+export * from './refresh-tokens';
+export * from './categories';
+export * from './forums';
+export * from './topics';
+export * from './posts';
+export * from './friendships';
+export * from './reactions';
+export * from './moderation-logs';
+export * from './silences';

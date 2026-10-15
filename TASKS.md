@@ -14,7 +14,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-002** — Configure TypeScript, ESLint, Prettier
 - [x] **TASK-003** — Set up Docker Compose (API + PostgreSQL)
 - [x] **TASK-004** — Configure Drizzle ORM with PostgreSQL connection
-- [ ] **TASK-005** — Create database schema (all tables)
+- [x] **TASK-005** — Create database schema (all tables)
 - [ ] **TASK-006** — Generate and run initial migrations
 - [ ] **TASK-007** — Set up environment configuration
 - [ ] **TASK-008** — Implement global exception filter and error handling
