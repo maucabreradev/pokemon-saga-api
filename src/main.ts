@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { ValidationPipe as CustomValidationPipe } from './common/pipes/validation.pipe';
+import { applySecurityConfig, applyCorsConfig } from './config/security.config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,11 +13,11 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api/v1');
 
+  // Security headers (Helmet)
+  applySecurityConfig(app);
+
   // CORS
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-    credentials: true,
-  });
+  applyCorsConfig(app);
 
   // Global pipes
   app.useGlobalPipes(

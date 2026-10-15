@@ -6,6 +6,9 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
+  transformIgnorePatterns: [
+    '<rootDir>/node_modules/.pnpm/',
+  ],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: './coverage',
   moduleNameMapper: {
