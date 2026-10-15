@@ -84,8 +84,11 @@ characters ───────► moderation_logs
 | `posts` | `topic_id` | List posts in topic |
 | `posts` | `author_character_id` | List user's posts |
 | `posts` | `parent_post_id` | Fetch nested replies |
+| `friendships` | `requester_character_id, addressee_character_id` (unique) | Prevent duplicate requests |
 | `friendships` | `requester_character_id` | List user's friendships |
 | `friendships` | `addressee_character_id` | List incoming requests |
+| `refresh_tokens` | `token_hash` | Look up session by token hash |
+| `refresh_tokens` | `user_id` | Revoke all user sessions |
 | `reactions` | `target_type, target_id` | Count reactions on target |
 
 ## Migrations
