@@ -9,6 +9,7 @@ import { refreshTokens } from '../database/schema/refresh-tokens';
 import { users } from '../database/schema/users';
 import { ConflictError, UnauthorizedError } from '../common/exceptions/app-errors';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 
 export interface RegisteredUser {
@@ -116,5 +117,49 @@ export class AuthService {
       .returning({ id: refreshTokens.id });
 
     return refreshToken;
+  }
+
+  async refresh(dto: RefreshDto): Promise<AuthTokens> {
+    const tokenHash = createHash('sha256').update(dto.refreshToken).digest('hex');
+
+    const [stored] = await this.db
+      .select({
+        id: refreshTokens.id,
+        userId: refreshTokens.userId,
+        expiresAt: refreshTokens.expiresAt,
+        revokedAt: refreshTokens.revokedAt,
+      })
+      .from(refreshTokens)
+      .where(eq(refreshTokens.tokenHash, tokenHash))
+      .limit(1);
+
+    if (!stored || stored.revokedAt || stored.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    await this.db
+      .update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(refreshTokens.id, stored.id));
+
+    const [user] = await this.db
+      .select({ id: users.id, email: users.email, role: users.role })
+      .from(users)
+      .where(eq(users.id, stored.userId))
+      .limit(1);
+
+    if (!user) {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const refreshToken = await this.issueRefreshToken(user.id);
+
+    return { accessToken, refreshToken };
   }
 }

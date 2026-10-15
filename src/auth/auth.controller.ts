@@ -10,6 +10,7 @@ import {
 import { ThrottleAuth } from '../config/rate-limit.config';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 
 @ApiTags('Auth')
@@ -53,5 +54,23 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid email or password' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('refresh')
+  @ThrottleAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh tokens with rotation' })
+  @ApiOkResponse({
+    description: 'New access and refresh tokens issued successfully',
+    schema: {
+      example: {
+        accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMSJ9.signature',
+        refreshToken: 'x8b9t0e1f2g3h4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  refresh(@Body() dto: RefreshDto) {
+    return this.authService.refresh(dto);
   }
 }
