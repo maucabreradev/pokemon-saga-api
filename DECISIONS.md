@@ -180,3 +180,17 @@
 - False positives log the user out everywhere on client double-submit; accepted tradeoff, documented here
 - The `revokeAllForUser` primitive is reused by TASK-019 (logout-all)
 - Grace window with idempotent replay stays a deferred refinement if double-submit proves to be a problem in practice
+
+---
+
+## ADR-013: Soft Delete for Users
+
+**Status**: Accepted
+
+**Context**: TASK-028 requires `DELETE /users/me` as a soft delete with character cascade, token revocation, and login blocking. The `users` table had no `deleted_at` column, and ADR-005 scoped soft delete to characters/topics/posts only.
+
+**Decision**: Add nullable `deleted_at` to `users` (migration `0002`). Cascade stays application-level in the service layer (set user `deleted_at`, revoke refresh tokens, soft delete characters); database `ON DELETE CASCADE` foreign keys are unchanged. All user lookups (`login`, `getMe`, updates, lists) filter `WHERE deleted_at IS NULL`. Already-issued access tokens remain valid until expiry (15 min), same tradeoff as bans.
+
+**Consequences**:
+- Deleted emails stay reserved (unique constraint) — re-registration after delete stays out of scope
+- Migration `0002` is purely additive (single nullable `ADD COLUMN`), safe to apply before the TASK-028 code lands
