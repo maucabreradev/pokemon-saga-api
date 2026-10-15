@@ -2,6 +2,7 @@ import * as bcrypt from 'bcrypt';
 import { ConflictError, UnauthorizedError } from '../common/exceptions/app-errors';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
 
 jest.mock('bcrypt', () => ({
@@ -44,18 +45,32 @@ function createConfigMock(refreshTokenExpiry = '30d') {
   return { getOrThrow: jest.fn().mockReturnValue(refreshTokenExpiry) };
 }
 
-function createDbMock(existingRows: Array<{ id: string }> = [], createdRow = {}) {
+function createDbMock(
+  existingRows: Array<{ id: string }> = [],
+  createdRow = {},
+  followUpRows: unknown[][] = [],
+) {
+  const limitMock = jest.fn();
+  for (const rows of [existingRows, ...followUpRows]) {
+    limitMock.mockResolvedValueOnce(rows);
+  }
+  limitMock.mockResolvedValue(followUpRows[followUpRows.length - 1] ?? existingRows);
   return {
     select: jest.fn().mockReturnValue({
       from: jest.fn().mockReturnValue({
         where: jest.fn().mockReturnValue({
-          limit: jest.fn().mockResolvedValue(existingRows),
+          limit: limitMock,
         }),
       }),
     }),
     insert: jest.fn().mockReturnValue({
       values: jest.fn().mockReturnValue({
         returning: jest.fn().mockResolvedValue([createdRow]),
+      }),
+    }),
+    update: jest.fn().mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([]),
       }),
     }),
   };
@@ -202,6 +217,80 @@ describe('AuthService', () => {
       const second = await service.issueRefreshToken(userId);
 
       expect(first).not.toBe(second);
+    });
+  });
+
+  describe('refresh', () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const rawToken = 'old-raw-refresh-token';
+    const { createHash } = jest.requireActual('crypto');
+    const tokenRow = {
+      id: 'token-row-id',
+      userId,
+      tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      revokedAt: null,
+    };
+    const userRow = {
+      id: userId,
+      email: 'ash.ketchum@pallettown.gg',
+      role: 'user' as const,
+    };
+
+    it('should revoke the old token and return a new token pair', async () => {
+      const dto: RefreshDto = { refreshToken: rawToken };
+      const dbMock = createDbMock([tokenRow], { id: 'new-token-row-id' }, [[userRow]]);
+      const jwtMock = createJwtMock();
+      const service = createService(dbMock, jwtMock, createConfigMock());
+      jwtMock.signAsync.mockResolvedValue('new-signed-access-token');
+
+      const result = await service.refresh(dto);
+
+      expect(jwtMock.signAsync).toHaveBeenCalledWith({
+        sub: userRow.id,
+        email: userRow.email,
+        role: userRow.role,
+      });
+      expect(dbMock.update).toHaveBeenCalled();
+      const revokedValues = dbMock.update().set.mock.calls[0][0];
+      expect(revokedValues.revokedAt).toBeInstanceOf(Date);
+      expect(result.accessToken).toBe('new-signed-access-token');
+      expect(typeof result.refreshToken).toBe('string');
+      expect(result.refreshToken).not.toBe(rawToken);
+    });
+
+    it('should throw UnauthorizedError for an unknown token', async () => {
+      const dto: RefreshDto = { refreshToken: 'unknown-token' };
+      const dbMock = createDbMock([]);
+      const jwtMock = createJwtMock();
+      const service = createService(dbMock, jwtMock, createConfigMock());
+
+      await expect(service.refresh(dto)).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+      expect(jwtMock.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedError for an expired token without revoking it', async () => {
+      const dto: RefreshDto = { refreshToken: rawToken };
+      const expiredRow = { ...tokenRow, expiresAt: new Date(Date.now() - 1000) };
+      const dbMock = createDbMock([expiredRow]);
+      const jwtMock = createJwtMock();
+      const service = createService(dbMock, jwtMock, createConfigMock());
+
+      await expect(service.refresh(dto)).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+      expect(jwtMock.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedError for an already revoked token', async () => {
+      const dto: RefreshDto = { refreshToken: rawToken };
+      const revokedRow = { ...tokenRow, revokedAt: new Date(Date.now() - 1000) };
+      const dbMock = createDbMock([revokedRow]);
+      const jwtMock = createJwtMock();
+      const service = createService(dbMock, jwtMock, createConfigMock());
+
+      await expect(service.refresh(dto)).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(jwtMock.signAsync).not.toHaveBeenCalled();
     });
   });
 });

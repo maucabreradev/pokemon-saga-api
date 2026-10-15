@@ -5,20 +5,21 @@
 
 ## Current Status
 
-Phase 2 is in progress. TASK-016 (Implement refresh token generation and storage) has been completed. `AuthService.issueRefreshToken()` generates a random token, stores only its SHA-256 hash in `refresh_tokens` with expiry from `jwt.refreshTokenExpiry` (30d), and `login()` now returns `{ accessToken, refreshToken }` per `API.md`. Covered by colocated unit tests written first under strict TDD.
+Phase 2 is in progress. TASK-017 (Implement token refresh endpoint with rotation) has been completed. `POST /api/v1/auth/refresh` validates the refresh token by hash, rejects unknown/expired/revoked tokens with a generic `UnauthorizedError` (401), revokes the used token (`revokedAt`), and issues a new access + refresh pair. Covered by colocated unit tests written first under strict TDD.
 
 ## Last Completed
 
-- **TASK-016** — Implement refresh token generation and storage: Added `AuthService.issueRefreshToken()` (48 random bytes base64url, SHA-256 hex stored, expiry parsed from `jwt.refreshTokenExpiry`, `AuthTokens` interface) and wired it into `login()` so it returns `{ accessToken, refreshToken }`. `ConfigService` injected into `AuthService` (unit specs stub ESM-only `@nestjs/config`). Colocated unit tests (3 new issuance tests + updated login/controller tests) following RED → GREEN → REFACTOR; full suite 31/31 pass, lint clean, e2e health passes.
+- **TASK-017** — Implement token refresh endpoint with rotation: Added `RefreshDto`, `AuthService.refresh()` (hash lookup, generic 401 on unknown/expired/revoked or orphaned token, `revokedAt` set on use, new access + refresh pair via `signAsync` + `issueRefreshToken`), and `POST /auth/refresh` (public, `@ThrottleAuth()`, HTTP 200, Swagger docs). Colocated unit tests (dto 3, service 4, controller 1) following RED → GREEN → REFACTOR; full suite 39/39 pass, lint clean, e2e health passes.
 
 ## Next Task
 
-- **TASK-017** — Implement token refresh endpoint with rotation.
+- **TASK-018** — Implement logout (single session).
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-017 | POST /auth/refresh with rotation (revoke-on-use, generic 401); 39/39 pass |
 | 2026-10-15 | TASK-016 | issueRefreshToken (SHA-256 stored, 30d expiry), login returns both tokens; 31/31 pass |
 | 2026-10-15 | TASK-015 | POST /auth/login with bcrypt compare, generic 401, JWT access token (15m); fixed unloaded config namespaces; 7 new unit tests (28/28 pass) |
 | 2026-10-15 | TASK-014 | POST /auth/register with bcrypt hashing, ConflictError on duplicate, 6 new unit tests (21/21 pass) |
@@ -59,8 +60,8 @@ Phase 2 is in progress. TASK-016 (Implement refresh token generation and storage
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-017 - Implement token refresh endpoint with rotation
-- Auth module: `issueRefreshToken(userId)` (random token, SHA-256 hash stored, expiry from `jwt.refreshTokenExpiry`); `login()` returns `{ accessToken, refreshToken }`; rotation/consumption comes in TASK-017
+- Next: TASK-018 - Implement logout (single session)
+- Auth module: `RefreshDto`, `refresh()` (hash lookup, generic 401, revoke-on-use, new pair via `signAsync` + `issueRefreshToken`); reuse of rotated token → 401; family-wide revocation on reuse left as future hardening
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches

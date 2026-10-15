@@ -29,7 +29,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-014** — Implement user registration endpoint
 - [x] **TASK-015** — Implement user login with JWT access token
 - [x] **TASK-016** — Implement refresh token generation and storage
-- [ ] **TASK-017** — Implement token refresh endpoint with rotation
+- [x] **TASK-017** — Implement token refresh endpoint with rotation
 - [ ] **TASK-018** — Implement logout (single session)
 - [ ] **TASK-019** — Implement logout-all (revoke all sessions)
 - [ ] **TASK-020** — Create AuthGuard and @CurrentUser decorator
