@@ -106,12 +106,15 @@ pnpm db:push
 
 ## Soft Deletes
 
-Characters, topics, and posts use soft deletes:
+Characters, topics, posts, and users use soft deletes:
 
 - `deleted_at` timestamp set on deletion
 - Queries filter `WHERE deleted_at IS NULL` by default
 - Admin can restore by clearing `deleted_at`
 - Banned characters also use soft delete with `status = 'banned'`
+- Deleting a user also revokes all refresh tokens and soft deletes their
+  characters (application-level cascade in the service layer; database
+  `ON DELETE CASCADE` foreign keys are unchanged and only apply to hard deletes)
 
 ## Timestamp Convention
 

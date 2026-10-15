@@ -80,5 +80,5 @@ Phase 2 is complete. TASK-026 (GET /users/me/characters) implemented via UsersSe
 - Auth module: all 5 routes carry `@ThrottleAuth()` (proven by e2e); logout still takes refresh token in body, logout-all on Bearer
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
-- Phase 3 pending decision (before TASK-028): `users` has no `deleted_at` and ADR-005 scopes soft-delete to characters/topics/posts — decide soft-delete shape (migration + cascade rule) vs redefining TASK-028
+- Users soft-delete shape decided (ADR-013): nullable `deleted_at` added via migration `0002` (additive, applied cleanly in a test transaction with rollback); application-level cascade + `deleted_at IS NULL` filters land in TASK-028; deleted emails stay reserved
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches

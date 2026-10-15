@@ -15,6 +15,13 @@
       "when": 1792086325595,
       "tag": "0001_slimy_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792094802580,
+      "tag": "0002_slim_the_fallen",
+      "breakpoints": true
     }
   ]
 }
