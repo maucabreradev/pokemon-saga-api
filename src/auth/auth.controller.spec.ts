@@ -37,10 +37,22 @@ jest.mock('../database/database.module', () => ({
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let service: { register: jest.Mock; login: jest.Mock; refresh: jest.Mock; logout: jest.Mock };
+  let service: {
+    register: jest.Mock;
+    login: jest.Mock;
+    refresh: jest.Mock;
+    logout: jest.Mock;
+    logoutAll: jest.Mock;
+  };
 
   beforeEach(() => {
-    service = { register: jest.fn(), login: jest.fn(), refresh: jest.fn(), logout: jest.fn() };
+    service = {
+      register: jest.fn(),
+      login: jest.fn(),
+      refresh: jest.fn(),
+      logout: jest.fn(),
+      logoutAll: jest.fn(),
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new AuthController(service as any as AuthService);
   });
@@ -99,6 +111,18 @@ describe('AuthController', () => {
 
       await expect(controller.logout(dto)).resolves.toEqual({ message: 'Logged out successfully' });
       expect(service.logout).toHaveBeenCalledWith(dto.refreshToken);
+    });
+  });
+
+  describe('logoutAll', () => {
+    it('should delegate to the service and confirm the logout from all sessions', async () => {
+      const dto: RefreshDto = { refreshToken: 'current-raw-refresh-token' };
+      service.logoutAll.mockResolvedValue(undefined);
+
+      await expect(controller.logoutAll(dto)).resolves.toEqual({
+        message: 'Logged out from all sessions successfully',
+      });
+      expect(service.logoutAll).toHaveBeenCalledWith(dto.refreshToken);
     });
   });
 });

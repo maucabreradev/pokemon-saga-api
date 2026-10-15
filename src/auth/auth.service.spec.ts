@@ -357,4 +357,52 @@ describe('AuthService', () => {
       );
     });
   });
+
+  describe('logoutAll', () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const rawToken = 'current-raw-refresh-token';
+    const tokenRow = {
+      id: 'token-row-id',
+      userId,
+      tokenHash: createHash('sha256').update(rawToken).digest('hex'),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      revokedAt: null,
+    };
+
+    it('should revoke all sessions of the token owner', async () => {
+      const dbMock = createDbMock([tokenRow]);
+      const service = createService(dbMock, createJwtMock(), createConfigMock());
+
+      await service.logoutAll(rawToken);
+
+      expect(dbMock.update).toHaveBeenCalled();
+      expect(dbMock.insert).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedError for an unknown token', async () => {
+      const dbMock = createDbMock([]);
+      const service = createService(dbMock, createJwtMock(), createConfigMock());
+
+      await expect(service.logoutAll('unknown-token')).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedError for an expired token', async () => {
+      const expiredRow = { ...tokenRow, expiresAt: new Date(Date.now() - 1000) };
+      const dbMock = createDbMock([expiredRow]);
+      const service = createService(dbMock, createJwtMock(), createConfigMock());
+
+      await expect(service.logoutAll(rawToken)).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw UnauthorizedError for a revoked token', async () => {
+      const revokedRow = { ...tokenRow, revokedAt: new Date(Date.now() - 1000) };
+      const dbMock = createDbMock([revokedRow]);
+      const service = createService(dbMock, createJwtMock(), createConfigMock());
+
+      await expect(service.logoutAll(rawToken)).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+  });
 });
