@@ -10,7 +10,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 
 ## Phase 1 — Foundations
 
-- [ ] **TASK-001** — Initialize NestJS project with pnpm
+- [x] **TASK-001** — Initialize NestJS project with pnpm
 - [ ] **TASK-002** — Configure TypeScript, ESLint, Prettier
 - [ ] **TASK-003** — Set up Docker Compose (API + PostgreSQL)
 - [ ] **TASK-004** — Configure Drizzle ORM with PostgreSQL connection
