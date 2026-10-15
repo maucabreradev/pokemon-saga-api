@@ -1,5 +1,6 @@
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
 // @nestjs/swagger ships ESM-only dist that Jest (CJS) cannot parse.
@@ -11,6 +12,14 @@ jest.mock('@nestjs/swagger', () => ({
   ApiResponse: () => () => undefined,
   ApiCreatedResponse: () => () => undefined,
   ApiConflictResponse: () => () => undefined,
+  ApiOkResponse: () => () => undefined,
+  ApiUnauthorizedResponse: () => () => undefined,
+}));
+
+// @nestjs/jwt ships ESM-only dist that Jest (CJS) cannot parse.
+// It is stubbed here; AuthService itself is injected as a manual mock.
+jest.mock('@nestjs/jwt', () => ({
+  JwtService: jest.fn(),
 }));
 
 // database.module pulls @nestjs/config (ESM-only dist) which unit Jest (CJS)
@@ -21,10 +30,10 @@ jest.mock('../database/database.module', () => ({
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let service: { register: jest.Mock };
+  let service: { register: jest.Mock; login: jest.Mock };
 
   beforeEach(() => {
-    service = { register: jest.fn() };
+    service = { register: jest.fn(), login: jest.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new AuthController(service as any as AuthService);
   });
@@ -45,6 +54,20 @@ describe('AuthController', () => {
 
       await expect(controller.register(dto)).resolves.toEqual(created);
       expect(service.register).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe('login', () => {
+    it('should delegate to the service and return the access token', async () => {
+      const dto: LoginDto = {
+        email: 'ash.ketchum@pallettown.gg',
+        password: 'pikachu-25-forever',
+      };
+      const tokens = { accessToken: 'signed-access-token' };
+      service.login.mockResolvedValue(tokens);
+
+      await expect(controller.login(dto)).resolves.toEqual(tokens);
+      expect(service.login).toHaveBeenCalledWith(dto);
     });
   });
 });
