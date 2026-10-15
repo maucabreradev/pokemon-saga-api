@@ -19,6 +19,8 @@ Phase 2 is complete. TASK-022 (Add rate limiting to auth endpoints) verified tha
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | FIX | Hygiene: scaffold removed, JWT fallback dropped, env placeholder fails closed, ADR-010 superseded, e2e aligned with production pipeline |
+| 2026-10-15 | FIX | Schema constraints: friendships pair unique + refresh token hash/user indexes with migration, DB.md updated |
 | 2026-10-15 | TASK-022 | Auth bucket proven over HTTP (6th register 429, health 200); Phase 2 complete |
 | 2026-10-15 | TASK-021 | Roles decorator + global RolesGuard (exact match, no hierarchy yet); 62/62 pass |
 | 2026-10-15 | TASK-020 | Global AuthGuard + Public + CurrentUser, logout-all on Bearer; 56/56 pass |
@@ -70,4 +72,5 @@ Phase 2 is complete. TASK-022 (Add rate limiting to auth endpoints) verified tha
 - Auth module: all 5 routes carry `@ThrottleAuth()` (proven by e2e); logout still takes refresh token in body, logout-all on Bearer
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
+- Phase 3 pending decision (before TASK-028): `users` has no `deleted_at` and ADR-005 scopes soft-delete to characters/topics/posts — decide soft-delete shape (migration + cascade rule) vs redefining TASK-028
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches
