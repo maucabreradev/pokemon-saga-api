@@ -87,4 +87,19 @@ export class AuthController {
 
     return { message: 'Logged out successfully' };
   }
+
+  @Post('logout-all')
+  @ThrottleAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout from all sessions' })
+  @ApiOkResponse({
+    description: 'All refresh tokens revoked successfully',
+    schema: { example: { message: 'Logged out from all sessions successfully' } },
+  })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  async logoutAll(@Body() dto: RefreshDto) {
+    await this.authService.logoutAll(dto.refreshToken);
+
+    return { message: 'Logged out from all sessions successfully' };
+  }
 }
