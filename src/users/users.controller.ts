@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -10,6 +11,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
@@ -58,5 +60,17 @@ export class UsersController {
   @ApiConflictResponse({ description: 'Email already registered' })
   updateMe(@CurrentUser('sub') userId: string, @Body() dto: UpdateUserDto) {
     return this.usersService.updateEmail(userId, dto.email);
+  }
+
+  @Patch('me/password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change current user password' })
+  @ApiNoContentResponse({ description: 'Password changed, all sessions revoked' })
+  @ApiBadRequestResponse({ description: 'Invalid new password' })
+  @ApiUnauthorizedResponse({ description: 'Current password is incorrect' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  async changePassword(@CurrentUser('sub') userId: string, @Body() dto: ChangePasswordDto) {
+    await this.usersService.changePassword(userId, dto.currentPassword, dto.newPassword);
   }
 }

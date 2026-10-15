@@ -1,7 +1,19 @@
 import { eq } from 'drizzle-orm';
-import { ConflictError, NotFoundError } from '../common/exceptions/app-errors';
+import * as bcrypt from 'bcrypt';
+import {
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from '../common/exceptions/app-errors';
+import { refreshTokens } from '../database/schema/refresh-tokens';
 import { users } from '../database/schema/users';
 import { UsersService } from './users.service';
+
+jest.mock('bcrypt', () => ({
+  hash: jest.fn(),
+  compare: jest.fn(),
+}));
 
 jest.mock('drizzle-orm', () => {
   const actual = jest.requireActual('drizzle-orm');
@@ -32,6 +44,9 @@ function createService(dbMock: unknown) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new UsersService(dbMock as any);
 }
+
+const mockedHash = bcrypt.hash as jest.Mock;
+const mockedCompare = bcrypt.compare as jest.Mock;
 
 describe('UsersService', () => {
   beforeEach(() => {
@@ -150,6 +165,87 @@ describe('UsersService', () => {
       const service = createService(dbMock);
 
       await expect(service.updateEmail(userId, newEmail)).rejects.toBeInstanceOf(NotFoundError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('changePassword', () => {
+    const userId = '11111111-1111-4111-8111-111111111111';
+    const userRow = { id: userId, passwordHash: 'stored-hash' };
+
+    function createPasswordDbMock(userRows: unknown[] = []) {
+      const limitMock = jest.fn().mockResolvedValue(userRows);
+      const userReturningMock = jest.fn().mockResolvedValue([{}]);
+      const userWhereMock = jest.fn().mockReturnValue({ returning: userReturningMock });
+      const userSetMock = jest.fn().mockReturnValue({ where: userWhereMock });
+      const tokenWhereMock = jest.fn().mockResolvedValue([]);
+      const tokenSetMock = jest.fn().mockReturnValue({ where: tokenWhereMock });
+      const dbMock = {
+        select: jest.fn().mockReturnValue({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({ limit: limitMock }),
+          }),
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        update: jest.fn((table: any) =>
+          table === users ? { set: userSetMock } : { set: tokenSetMock },
+        ),
+      };
+      return { dbMock, userSetMock, tokenSetMock };
+    }
+
+    it('should hash the new password, update the user, and revoke all sessions', async () => {
+      const { dbMock, userSetMock, tokenSetMock } = createPasswordDbMock([userRow]);
+      const service = createService(dbMock);
+      mockedCompare.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      mockedHash.mockResolvedValue('new-hashed-password');
+
+      await service.changePassword(userId, 'pikachu-25-forever', 'charizard-06-forever');
+
+      expect(mockedCompare).toHaveBeenCalledWith('pikachu-25-forever', 'stored-hash');
+      expect(mockedHash).toHaveBeenCalledWith('charizard-06-forever', 12);
+      expect(dbMock.update).toHaveBeenCalledWith(users);
+      expect(dbMock.update).toHaveBeenCalledWith(refreshTokens);
+      const userSetValues = userSetMock.mock.calls[0][0];
+      expect(userSetValues.passwordHash).toBe('new-hashed-password');
+      expect(userSetValues.updatedAt).toBeInstanceOf(Date);
+      const tokenSetValues = tokenSetMock.mock.calls[0][0];
+      expect(tokenSetValues.revokedAt).toBeInstanceOf(Date);
+    });
+
+    it('should throw UnauthorizedError when the current password is wrong', async () => {
+      const { dbMock } = createPasswordDbMock([userRow]);
+      const service = createService(dbMock);
+      mockedCompare.mockResolvedValue(false);
+
+      await expect(
+        service.changePassword(userId, 'wrong-password', 'charizard-06-forever'),
+      ).rejects.toBeInstanceOf(UnauthorizedError);
+      expect(mockedHash).not.toHaveBeenCalled();
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ValidationError when the new password equals the current one', async () => {
+      const { dbMock } = createPasswordDbMock([userRow]);
+      const service = createService(dbMock);
+      mockedCompare.mockResolvedValue(true);
+
+      await expect(
+        service.changePassword(userId, 'pikachu-25-forever', 'pikachu-25-forever'),
+      ).rejects.toBeInstanceOf(ValidationError);
+      expect(mockedHash).not.toHaveBeenCalled();
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when the user does not exist', async () => {
+      const { dbMock } = createPasswordDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(
+        service.changePassword(userId, 'pikachu-25-forever', 'charizard-06-forever'),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(mockedCompare).not.toHaveBeenCalled();
+      expect(mockedHash).not.toHaveBeenCalled();
       expect(dbMock.update).not.toHaveBeenCalled();
     });
   });

@@ -1,7 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { eq } from 'drizzle-orm';
-import { ConflictError, NotFoundError } from '../common/exceptions/app-errors';
+import {
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
+import { refreshTokens } from '../database/schema/refresh-tokens';
 import { users } from '../database/schema/users';
 
 export interface UserProfile {
@@ -10,6 +17,8 @@ export interface UserProfile {
   role: 'user' | 'admin' | 'webmaster';
   createdAt: Date;
 }
+
+const BCRYPT_SALT_ROUNDS = 12;
 
 @Injectable()
 export class UsersService {
@@ -76,5 +85,45 @@ export class UsersService {
       });
 
     return updated;
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const [user] = await this.db
+      .select({ id: users.id, passwordHash: users.passwordHash })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      throw new NotFoundError('User', userId);
+    }
+
+    const currentMatches = await bcrypt.compare(currentPassword, user.passwordHash);
+
+    if (!currentMatches) {
+      throw new UnauthorizedError('Current password is incorrect');
+    }
+
+    const samePassword = await bcrypt.compare(newPassword, user.passwordHash);
+
+    if (samePassword) {
+      throw new ValidationError('New password must be different from the current password');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+
+    await this.db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+
+    await this.db
+      .update(refreshTokens)
+      .set({ revokedAt: new Date() })
+      .where(eq(refreshTokens.userId, userId));
   }
 }
