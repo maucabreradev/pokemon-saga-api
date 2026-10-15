@@ -1,8 +1,9 @@
 import * as bcrypt from 'bcrypt';
 import { createHash } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { ConflictError, UnauthorizedError } from '../common/exceptions/app-errors';
 import { refreshTokens } from '../database/schema/refresh-tokens';
+import { users } from '../database/schema/users';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -15,7 +16,7 @@ jest.mock('bcrypt', () => ({
 
 jest.mock('drizzle-orm', () => {
   const actual = jest.requireActual('drizzle-orm');
-  return { ...actual, eq: jest.fn() };
+  return { ...actual, eq: jest.fn(), and: jest.fn(), isNull: jest.fn() };
 });
 
 // @nestjs/jwt ships ESM-only dist that Jest (CJS) cannot parse.
@@ -168,6 +169,20 @@ describe('AuthService', () => {
 
       await expect(service.login(dto)).rejects.toBeInstanceOf(UnauthorizedError);
       expect(mockedCompare).not.toHaveBeenCalled();
+      expect(jwtMock.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('should exclude soft-deleted users with the generic message', async () => {
+      const dbMock = createDbMock([]);
+      const jwtMock = createJwtMock();
+      const service = createService(dbMock, jwtMock, createConfigMock());
+
+      const error = await service.login(dto).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(UnauthorizedError);
+      expect((error as UnauthorizedError).message).toBe('Invalid email or password');
+      expect(isNull).toHaveBeenCalledWith(users.deletedAt);
+      expect(and).toHaveBeenCalled();
       expect(jwtMock.signAsync).not.toHaveBeenCalled();
     });
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -114,5 +114,16 @@ export class UsersController {
   @ApiUnauthorizedResponse({ description: 'Authentication required' })
   getMySessions(@CurrentUser('sub') userId: string) {
     return this.usersService.getMySessions(userId);
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete current user account (soft delete)' })
+  @ApiNoContentResponse({ description: 'Account soft deleted, sessions revoked' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  async deleteMe(@CurrentUser('sub') userId: string) {
+    await this.usersService.deleteMe(userId);
   }
 }

@@ -12,8 +12,20 @@ Allow users to delete their own account (soft delete).
    - Soft delete all user's characters
    - Return 204 No Content
 2. Handle edge cases:
-   - Already deleted → 404 or idempotent 204
+   - Already deleted → idempotent 204 (D1); 404 only when the row is missing
 3. Unit tests
+
+## Contract Decisions (confirmed, see ADR-013)
+
+- **D1** — Already-deleted → idempotent 204; 404 only when the row is missing.
+- **D2** — `POST /auth/login` filters `deleted_at IS NULL`, generic 401
+  (`'Invalid email or password'`, no user-enumeration via deleted status).
+- **D3** — `isNull(deletedAt)` filter on: `login`, `getMe`, `updateEmail`,
+  `changePassword`, `deleteMe`. Lists (`getMyCharacters`, `getMySessions`) and
+  `register` unchanged (cascade empties lists; deleted emails stay reserved).
+- **D4** — Characters cascade sets `status = 'deleted'` + `deletedAt` (+
+  `updatedAt` per DB.md timestamp convention).
+- **D5** — The three writes run in a single `db.transaction`.
 
 
 ## TDD Steps (MANDATORY)
