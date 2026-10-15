@@ -2,21 +2,14 @@ process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/pokemo
 process.env.JWT_SECRET = 'test-only-secret-key-min-32-chars-long';
 
 import { INestApplication } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AppModule } from '../../src/app.module';
+import { createTestApp } from './test-app';
 
 describe('Health (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
-    await app.init();
+    app = await createTestApp();
   });
 
   afterAll(async () => {
@@ -26,8 +19,8 @@ describe('Health (e2e)', () => {
   it('GET /api/v1/health should return ok status with timestamp and uptime', async () => {
     const response = await request(app.getHttpServer()).get('/api/v1/health').expect(200);
 
-    expect(response.body.status).toBe('ok');
-    expect(new Date(response.body.timestamp).toISOString()).toBe(response.body.timestamp);
-    expect(typeof response.body.uptime).toBe('number');
+    expect(response.body.data.status).toBe('ok');
+    expect(new Date(response.body.data.timestamp).toISOString()).toBe(response.body.data.timestamp);
+    expect(typeof response.body.data.uptime).toBe('number');
   });
 });

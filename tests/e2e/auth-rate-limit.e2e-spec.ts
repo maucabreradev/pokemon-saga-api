@@ -2,21 +2,14 @@ process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/pokemo
 process.env.JWT_SECRET = 'test-only-secret-key-min-32-chars-long';
 
 import { INestApplication } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { AppModule } from '../../src/app.module';
+import { createTestApp } from './test-app';
 
 describe('Auth rate limiting (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
-    await app.init();
+    app = await createTestApp();
   });
 
   afterAll(async () => {
