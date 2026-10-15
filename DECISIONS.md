@@ -140,7 +140,7 @@
 
 ## ADR-010: Strict 80% Coverage Gate Despite Current ~14%
 
-**Status**: Accepted
+**Status**: Superseded (2026-10-15 — coverage runs as informational-only `Coverage` job; see CI workflow and `State.md`)
 
 **Context**: Measured line coverage is ~14% during the foundations phase; the full test pyramid lands in Phase 9 (TASK-082–089). The CI coverage gates fail below 80%.
 
