@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { applyRateLimiting } from './config/rate-limit.config';
 import { configuration, validationSchema } from './config';
 
 @Module({
@@ -20,6 +22,7 @@ import { configuration, validationSchema } from './config';
     }),
     DatabaseModule,
     HealthModule,
+    applyRateLimiting(),
   ],
   controllers: [AppController],
   providers: [AppService],

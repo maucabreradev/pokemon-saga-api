@@ -5,20 +5,21 @@
 
 ## Current Status
 
-Phase 1 is in progress. TASK-010 (Configure Helmet, CORS, and security headers) has been completed. The application now has comprehensive security headers via Helmet (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, DNS-Prefetch-Control, X-XSS-Protection, hide X-Powered-By) and refined CORS configuration extracted to a dedicated config module.
+Phase 1 is in progress. TASK-011 (Implement rate limiting with @nestjs/throttler) has been completed. The application now has comprehensive rate limiting with global limits (100 req/min per IP) and stricter auth endpoint limits (5 req/min per IP) using named throttlers.
 
 ## Last Completed
 
-- **TASK-010** — Configure Helmet, CORS, and security headers: Installed `helmet` package. Created `src/config/security.config.ts` with `getHelmetConfig()`, `applySecurityConfig()`, `applyCorsConfig()` functions. Configured Helmet with: Content-Security-Policy (restrictive directives), HSTS (1 year, includeSubDomains, preload), X-Frame-Options: SAMEORIGIN, X-Content-Type-Options: nosniff, Referrer-Policy: strict-origin-when-cross-origin, X-DNS-Prefetch-Control: off, X-XSS-Protection: enabled, hide X-Powered-By. CORS extracted to config with environment-based origin. Added unit tests (3 tests) following TDD: RED → GREEN → REFACTOR.
+- **TASK-011** — Implement rate limiting with @nestjs/throttler: Installed `@nestjs/throttler` v6.7.1. Created `src/config/rate-limit.config.ts` with `getThrottlerConfig()` and `applyRateLimiting()` functions. Configured two named throttlers: 'global' (100 req/min) and 'auth' (5 req/min). Integrated into AppModule via `applyRateLimiting()`. Added unit tests (3 tests) following TDD: RED → GREEN → REFACTOR.
 
 ## Next Task
 
-- **TASK-011** — Implement rate limiting with @nestjs/throttler: Install @nestjs/throttler, configure global rate limiting (100 req/min per IP), stricter limits on auth endpoints (5 req/min per IP).
+- **TASK-012** — Set up health check endpoint: The health check endpoint already exists at `/api/v1/health` (implemented in TASK-009). Verify it works with rate limiting and add any missing functionality.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-14 | TASK-011 | Rate limiting with @nestjs/throttler (global 100/min, auth 5/min), unit tests (TDD) |
 | 2026-10-14 | TASK-010 | Helmet security headers, CORS config, unit tests (TDD) |
 | 2026-10-14 | TASK-009 | Swagger/OpenAPI setup with Bearer auth, 11 tags, HealthController with decorators |
 | 2026-10-14 | TASK-008 | Global exception filters, custom exceptions, validation pipes, response interceptor |
@@ -32,6 +33,7 @@ Phase 1 is in progress. TASK-010 (Configure Helmet, CORS, and security headers) 
 
 ## Context for Next Session
 
+- Rate limiting: global 100 req/min per IP, auth 5 req/min per IP via named throttlers
 - Security headers via Helmet: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, DNS-Prefetch-Control, X-XSS-Protection, hidden X-Powered-By
 - CORS configured via `src/config/security.config.ts` with env-based origin
 - Swagger UI available at `/api/docs` with Bearer token auth support
@@ -42,5 +44,5 @@ Phase 1 is in progress. TASK-010 (Configure Helmet, CORS, and security headers) 
 - Global AllExceptionsFilter and DatabaseExceptionFilter
 - ResponseInterceptor adds metadata (timestamp, path, duration)
 - Custom ValidationPipe with class-validator and class-transformer
-- Next: TASK-011 - Rate limiting with @nestjs/throttler
+- Next: TASK-012 - Health check endpoint (verify existing works)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
