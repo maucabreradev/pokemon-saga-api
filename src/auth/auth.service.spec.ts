@@ -1,5 +1,8 @@
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
+import { eq } from 'drizzle-orm';
 import { ConflictError, UnauthorizedError } from '../common/exceptions/app-errors';
+import { refreshTokens } from '../database/schema/refresh-tokens';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -9,6 +12,11 @@ jest.mock('bcrypt', () => ({
   hash: jest.fn(),
   compare: jest.fn(),
 }));
+
+jest.mock('drizzle-orm', () => {
+  const actual = jest.requireActual('drizzle-orm');
+  return { ...actual, eq: jest.fn() };
+});
 
 // @nestjs/jwt ships ESM-only dist that Jest (CJS) cannot parse.
 // JwtService is injected as a manual mock, so the module is stubbed.
@@ -309,6 +317,44 @@ describe('AuthService', () => {
       await expect(service.refresh(dto)).rejects.toBeInstanceOf(UnauthorizedError);
       expect(dbMock.update).not.toHaveBeenCalled();
       expect(jwtMock.signAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout', () => {
+    it('should revoke the matching refresh token', async () => {
+      const rawToken = 'current-raw-refresh-token';
+      const dbMock = createDbMock();
+      const service = createService(dbMock, createJwtMock(), createConfigMock());
+
+      await service.logout(rawToken);
+
+      expect(dbMock.update).toHaveBeenCalled();
+      const whereMock = dbMock.update().set.mock.results[0].value.where;
+      expect(whereMock).toHaveBeenCalled();
+      const setValues = dbMock.update().set.mock.calls[0][0];
+      expect(setValues.revokedAt).toBeInstanceOf(Date);
+      expect(dbMock.insert).not.toHaveBeenCalled();
+    });
+
+    it('should resolve without error for an unknown token', async () => {
+      const dbMock = createDbMock();
+      const service = createService(dbMock, createJwtMock(), createConfigMock());
+
+      await expect(service.logout('unknown-token')).resolves.toBeUndefined();
+    });
+
+    it('should match the stored row by token hash', async () => {
+      const rawToken = 'current-raw-refresh-token';
+      const dbMock = createDbMock();
+      const service = createService(dbMock, createJwtMock(), createConfigMock());
+      const mockedEq = eq as jest.Mock;
+
+      await service.logout(rawToken);
+
+      expect(mockedEq).toHaveBeenCalledWith(
+        refreshTokens.tokenHash,
+        createHash('sha256').update(rawToken).digest('hex'),
+      );
     });
   });
 });
