@@ -9,6 +9,8 @@ import {
 } from '@nestjs/swagger';
 import { ThrottleAuth } from '../config/rate-limit.config';
 import { AuthService } from './auth.service';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { Public } from './decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -19,6 +21,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Public()
   @ThrottleAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new user' })
@@ -39,6 +42,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Public()
   @ThrottleAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
@@ -57,6 +61,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Public()
   @ThrottleAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh tokens with rotation' })
@@ -96,9 +101,9 @@ export class AuthController {
     description: 'All refresh tokens revoked successfully',
     schema: { example: { message: 'Logged out from all sessions successfully' } },
   })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
-  async logoutAll(@Body() dto: RefreshDto) {
-    await this.authService.logoutAll(dto.refreshToken);
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  async logoutAll(@CurrentUser('sub') userId: string) {
+    await this.authService.logoutAll(userId);
 
     return { message: 'Logged out from all sessions successfully' };
   }
