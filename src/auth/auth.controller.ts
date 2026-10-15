@@ -73,4 +73,18 @@ export class AuthController {
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto);
   }
+
+  @Post('logout')
+  @ThrottleAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout from the current session' })
+  @ApiOkResponse({
+    description: 'Refresh token revoked successfully',
+    schema: { example: { message: 'Logged out successfully' } },
+  })
+  async logout(@Body() dto: RefreshDto) {
+    await this.authService.logout(dto.refreshToken);
+
+    return { message: 'Logged out successfully' };
+  }
 }
