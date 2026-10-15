@@ -8,6 +8,13 @@
       "when": 1792028104894,
       "tag": "0000_great_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792086325595,
+      "tag": "0001_slimy_hellion",
+      "breakpoints": true
     }
   ]
 }
