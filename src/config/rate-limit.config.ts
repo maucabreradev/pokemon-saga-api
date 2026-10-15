@@ -50,3 +50,16 @@ export function ThrottleAuth() {
     },
   });
 }
+
+// 3 requests per hour per IP for character creation
+export const CHARACTER_CREATION_THROTTLE_LIMIT = 3;
+export const CHARACTER_CREATION_THROTTLE_TTL = 3600000;
+
+export function ThrottleCharacterCreation() {
+  return Throttle({
+    default: {
+      limit: CHARACTER_CREATION_THROTTLE_LIMIT,
+      ttl: CHARACTER_CREATION_THROTTLE_TTL,
+    },
+  });
+}

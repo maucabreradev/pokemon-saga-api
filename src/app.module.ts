@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { CharactersModule } from './characters/characters.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
@@ -25,6 +26,7 @@ import {
     HealthModule,
     AuthModule,
     UsersModule,
+    CharactersModule,
     applyRateLimiting(),
   ],
   controllers: [],
