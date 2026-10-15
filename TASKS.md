@@ -140,3 +140,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [ ] **TASK-098** — Create seeder for admin user account
 - [ ] **TASK-099** — Create seeder for demo characters and content
 - [ ] **TASK-100** — Final integration test with seeded data
+
+## Phase 12 — Auth Hardening
+
+- [ ] **TASK-101** — Refresh token reuse detection with family revocation
