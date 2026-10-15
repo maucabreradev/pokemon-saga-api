@@ -38,7 +38,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 
 ## Phase 3 — Users & Characters
 
-- [ ] **TASK-023** — Implement GET /users/me endpoint
+- [x] **TASK-023** — Implement GET /users/me endpoint
 - [ ] **TASK-024** — Implement PATCH /users/me (update email)
 - [ ] **TASK-025** — Implement PATCH /users/me/password
 - [ ] **TASK-026** — Implement GET /users/me/characters

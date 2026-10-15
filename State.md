@@ -1,24 +1,25 @@
 # Project State
 
 **Last updated**: 2026-10-15
-**Current phase**: Phase 2 — Authentication (complete), entering Phase 3 — Users & Characters
+**Current phase**: Phase 3 — Users & Characters (TASK-023 complete, next TASK-024)
 
 ## Current Status
 
-Phase 2 is complete. TASK-022 (Add rate limiting to auth endpoints) verified that all five auth routes already carry `@ThrottleAuth()` (5 req/min) and proved it over HTTP: the 6th rapid `POST /auth/register` returns 429 while `GET /health` stays 200. Next is Phase 3 (TASK-023).
+Phase 2 is complete. TASK-023 (GET /users/me) implemented via new UsersModule with UsersService.getMe and UsersController, protected by the global AuthGuard. Returns only id/email/role/createdAt, throws 404 when the user row is missing. Next is TASK-024 (PATCH /users/me).
 
 ## Last Completed
 
-- **TASK-022** — Add rate limiting to auth endpoints: Verified all five auth routes carry `@ThrottleAuth()` and proved enforcement over HTTP with a new e2e spec (6th rapid register → 429, health control stays 200). No production changes needed. Phase 2 Authentication is now complete.
+- **TASK-023** — Implement GET /users/me endpoint: New UsersModule (service + controller) returning the public profile for the Bearer identity, 404 via NotFoundError when missing; 65/65 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Next Task
 
-- **TASK-023** — Implement GET /users/me endpoint.
+- **TASK-024** — Implement PATCH /users/me (update email).
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-15 | TASK-023 | GET /users/me via UsersModule (public profile only, 404 when missing); 65/65 unit, 3/3 e2e, no migration |
 | 2026-10-15 | FIX | Hygiene: scaffold removed, JWT fallback dropped, env placeholder fails closed, ADR-010 superseded, e2e aligned with production pipeline |
 | 2026-10-15 | FIX | Schema constraints: friendships pair unique + refresh token hash/user indexes with migration, DB.md updated |
 | 2026-10-15 | TASK-022 | Auth bucket proven over HTTP (6th register 429, health 200); Phase 2 complete |
@@ -68,7 +69,8 @@ Phase 2 is complete. TASK-022 (Add rate limiting to auth endpoints) verified tha
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-023 - Implement GET /users/me endpoint (Phase 3 start)
+- Next: TASK-024 - Implement PATCH /users/me (update email)
+- Users module: `UsersService.getMe` selects only id/email/role/createdAt, throws NotFoundError (404) when missing; `GET /users/me` uses `@CurrentUser('sub')`, Bearer required, documented under `Users` tag
 - Auth module: all 5 routes carry `@ThrottleAuth()` (proven by e2e); logout still takes refresh token in body, logout-all on Bearer
 - bcrypt 6.0.0 allowed to build via `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - Git workflow: feature branch → squash merge → develop → delete feature branch
