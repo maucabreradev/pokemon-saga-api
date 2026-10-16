@@ -923,4 +923,109 @@ describe('CharactersService', () => {
       ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
+
+  describe('getCharacterPosts', () => {
+    const readableId = 'GreenAppleHunter123';
+    const characterRow = { id: 'char-id' };
+    const postRows = [
+      {
+        id: 'post-id-1',
+        topicId: 'topic-id-1',
+        topicTitle: 'Best starter?',
+        body: 'Pikachu is the best starter because it is electric and fast enough to win.',
+        createdAt: new Date('2026-10-15T00:00:00.000Z'),
+      },
+    ];
+
+    function createPostsDbMock(characterRows: unknown[], rows: unknown[]) {
+      let selectCalls = 0;
+      const offset = jest.fn().mockResolvedValue(rows);
+      const limit = jest.fn().mockReturnValue({ offset });
+      const orderBy = jest.fn().mockReturnValue({ limit });
+      const postsWhere = jest.fn().mockReturnValue({ orderBy });
+      const innerJoin = jest.fn().mockReturnValue({ where: postsWhere });
+      const lookupWhere = jest.fn().mockReturnValue({
+        limit: jest.fn().mockResolvedValue(characterRows),
+      });
+      const select = jest.fn().mockImplementation(() => {
+        selectCalls++;
+        if (selectCalls === 1) {
+          // Character lookup: select().from().where().limit(1)
+          return { from: jest.fn().mockReturnValue({ where: lookupWhere }) };
+        }
+        // Posts query: select().from().innerJoin().where().orderBy().limit().offset()
+        return { from: jest.fn().mockReturnValue({ innerJoin }) };
+      });
+
+      return { dbMock: { select }, lookupWhere, limit, offset };
+    }
+
+    it("should return the character's posts newest first with previews", async () => {
+      const { dbMock } = createPostsDbMock([characterRow], postRows);
+      const service = createService(dbMock);
+
+      const result = await service.getCharacterPosts(readableId, { page: 1, limit: 20 });
+
+      expect(result).toEqual([
+        {
+          id: 'post-id-1',
+          topicId: 'topic-id-1',
+          topicTitle: 'Best starter?',
+          bodyPreview: postRows[0].body,
+          createdAt: postRows[0].createdAt,
+        },
+      ]);
+    });
+
+    it('should truncate long bodies to a 200-character preview', async () => {
+      const longBody = 'A'.repeat(250);
+      const rows = [{ ...postRows[0], body: longBody }];
+      const { dbMock } = createPostsDbMock([characterRow], rows);
+      const service = createService(dbMock);
+
+      const [result] = await service.getCharacterPosts(readableId, { page: 1, limit: 20 });
+
+      expect(result.bodyPreview).toBe(`${'A'.repeat(200)}...`);
+      expect(result.bodyPreview).toHaveLength(203);
+    });
+
+    it('should apply pagination as limit and offset', async () => {
+      const { dbMock, limit, offset } = createPostsDbMock([characterRow], []);
+      const service = createService(dbMock);
+
+      await service.getCharacterPosts(readableId, { page: 3, limit: 10 });
+
+      expect(limit).toHaveBeenCalledWith(10);
+      expect(offset).toHaveBeenCalledWith(20);
+    });
+
+    it('should return an empty array when the character has no posts', async () => {
+      const { dbMock } = createPostsDbMock([characterRow], []);
+      const service = createService(dbMock);
+
+      await expect(service.getCharacterPosts(readableId, { page: 1, limit: 20 })).resolves.toEqual(
+        [],
+      );
+    });
+
+    it('should throw NotFoundError when the character does not exist', async () => {
+      const { dbMock } = createPostsDbMock([], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.getCharacterPosts('NopeNopeNope000', { page: 1, limit: 20 }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('should throw NotFoundError when the character is deleted or banned (same as missing)', async () => {
+      // Non-active rows are filtered in the WHERE clause, so the db returns [].
+      const { dbMock, lookupWhere } = createPostsDbMock([], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.getCharacterPosts(readableId, { page: 1, limit: 20 }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(lookupWhere).toHaveBeenCalledTimes(1);
+    });
+  });
 });

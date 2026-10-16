@@ -249,4 +249,32 @@ export class CharactersController {
   ) {
     return this.charactersService.getCharacterFriends(readableId, query);
   }
+
+  @Get(':readableId/posts')
+  @Public()
+  @ApiOperation({ summary: "List character's posts" })
+  @ApiParam({ name: 'readableId', example: 'GreenAppleHunter123' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiOkResponse({
+    description: "Character's posts newest first",
+    schema: {
+      example: [
+        {
+          id: '66666666-6666-4666-8666-666666666666',
+          topicId: '55555555-5555-4555-8555-555555555555',
+          topicTitle: 'Best starter?',
+          bodyPreview: 'Pikachu is the best starter...',
+          createdAt: '2026-10-15T00:00:00.000Z',
+        },
+      ],
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Character not found' })
+  async getCharacterPosts(
+    @Param('readableId') readableId: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.charactersService.getCharacterPosts(readableId, query);
+  }
 }
