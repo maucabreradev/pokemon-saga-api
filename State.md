@@ -1,7 +1,7 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 4 in progress — Forums (TASK-040 complete, next TASK-041 create category)
+**Current phase**: Phase 4 in progress — Forums (TASK-041 complete, next TASK-042 create forum)
 
 ## Verification (2026-10-16, branch develop)
 
@@ -13,7 +13,7 @@
 
 ## Current Status
 
-Phase 4 is in progress. TASK-040 (GET /forums/:id detail) implemented via ForumsService.getForumDetail and ForumsController.getForumDetail. Public endpoint; public-only lookup (404 masks missing/non-public); immediate sub-forums ordered by displayOrder; breadcrumb root-first with cycle guard, stopping at non-public parents; topicCount excludes deleted; 216/216 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-041 (POST /forums/categories admin).
+Phase 4 is in progress. TASK-041 (POST /forums/categories) implemented via ForumsService.createCategory and ForumsController.createCategory. Staff-only via @Roles('admin', 'webmaster') (global RolesGuard 403, AuthGuard 401); displayOrder = max + 1 (0 when empty); 226/226 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-042 (POST /forums admin).
 
 ## Last Completed
 
@@ -24,6 +24,7 @@ Phase 4 is in progress. TASK-040 (GET /forums/:id detail) implemented via Forums
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-041 | POST /forums/categories via createCategory (staff @Roles admin+webmaster, displayOrder max+1, CreateCategoryDto 3-64/200/enum); 226/226 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-040 | GET /forums/:id via getForumDetail (public, 404 masks non-public, children + root-first breadcrumb with cycle guard, topicCount excludes deleted); 216/216 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-039 | GET /forums via ForumsService.getTree (public, public-only guest view, nested parent map + displayOrder, orphans as roots); 209/209 unit, lint clean, no migration — Phase 4 in progress |
 | 2026-10-16 | TASK-038 | GET :readableId/posts via getCharacterPosts (public, topic join + double deleted filter both sides, DESC, preview 200 + topicId, plain array page/limit); 203/203 unit, 3/3 e2e, no migration — Phase 3 complete |
