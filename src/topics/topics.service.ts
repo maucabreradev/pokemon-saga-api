@@ -1,9 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SQL, and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { SQL, and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { characters } from '../database/schema/characters';
 import { forums } from '../database/schema/forums';
+import { posts } from '../database/schema/posts';
 import { topics } from '../database/schema/topics';
 import { ForumsService } from '../forums/forums.service';
 import { ListTopicsQueryDto } from './dto/list-topics-query.dto';
@@ -28,6 +30,39 @@ export interface PaginatedTopics {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export interface TopicPostItem {
+  id: string;
+  topicId: string;
+  parentPostId: string | null;
+  authorCharacterId: string;
+  authorName: string;
+  body: string;
+  createdAt: Date;
+}
+
+export interface TopicDetail {
+  topic: {
+    id: string;
+    title: string;
+    body: string;
+    forumId: string;
+    forumName: string;
+    authorCharacterId: string;
+    authorName: string;
+    isPinned: boolean;
+    isLocked: boolean;
+    viewCount: number;
+    createdAt: Date;
+  };
+  posts: {
+    data: TopicPostItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 const MAX_LIMIT = 50;
@@ -127,5 +162,83 @@ export class TopicsService {
       .offset((page - 1) * limit);
 
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getTopicDetail(
+    id: string,
+    query: PaginationQueryDto,
+    userId?: string,
+  ): Promise<TopicDetail> {
+    const [topic] = await this.db
+      .select({
+        id: topics.id,
+        title: topics.title,
+        body: topics.body,
+        forumId: topics.forumId,
+        forumName: forums.name,
+        authorCharacterId: topics.authorCharacterId,
+        authorName: characters.publicName,
+        isPinned: topics.isPinned,
+        isLocked: topics.isLocked,
+        viewCount: topics.viewCount,
+        createdAt: topics.createdAt,
+      })
+      .from(topics)
+      .innerJoin(forums, eq(topics.forumId, forums.id))
+      .innerJoin(characters, eq(topics.authorCharacterId, characters.id))
+      .where(and(eq(topics.id, id), eq(topics.isDeleted, false), isNull(topics.deletedAt)))
+      .limit(1);
+
+    if (!topic) {
+      throw new NotFoundError('Topic', id);
+    }
+
+    try {
+      await this.forumsService.assertForumAccess(topic.forumId, userId);
+    } catch (error) {
+      // Guests must not learn topics in non-public forums exist.
+      if (userId === undefined && error instanceof ForbiddenError) {
+        throw new NotFoundError('Topic', id);
+      }
+      throw error;
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const nextViewCount = topic.viewCount + 1;
+
+    await this.db
+      .update(topics)
+      .set({ viewCount: nextViewCount, updatedAt: new Date() })
+      .where(eq(topics.id, id));
+
+    const matching = await this.db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(and(eq(posts.topicId, id), eq(posts.isDeleted, false), isNull(posts.deletedAt)));
+    const total = matching.length;
+
+    // Flat chronological list; clients assemble reply trees via parentPostId.
+    const data = await this.db
+      .select({
+        id: posts.id,
+        topicId: posts.topicId,
+        parentPostId: posts.parentPostId,
+        authorCharacterId: posts.authorCharacterId,
+        authorName: characters.publicName,
+        body: posts.body,
+        createdAt: posts.createdAt,
+      })
+      .from(posts)
+      .innerJoin(characters, eq(posts.authorCharacterId, characters.id))
+      .where(and(eq(posts.topicId, id), eq(posts.isDeleted, false), isNull(posts.deletedAt)))
+      .orderBy(asc(posts.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    return {
+      topic: { ...topic, viewCount: nextViewCount },
+      posts: { data, total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
   }
 }

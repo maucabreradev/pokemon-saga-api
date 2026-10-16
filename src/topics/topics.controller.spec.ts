@@ -6,6 +6,7 @@ jest.mock('@nestjs/swagger', () => ({
   ApiOkResponse: () => () => undefined,
   ApiNotFoundResponse: () => () => undefined,
   ApiForbiddenResponse: () => () => undefined,
+  ApiParam: () => () => undefined,
   ApiQuery: () => () => undefined,
 }));
 
@@ -31,6 +32,33 @@ describe('TopicsController', () => {
       // Assert
       expect(serviceMock.listTopics).toHaveBeenCalledWith(query);
       expect(result).toBe(page);
+    });
+  });
+
+  describe('getTopicDetail', () => {
+    it('should return the topic detail from the service', async () => {
+      // Arrange
+      const id = 'topic-id-1';
+      const query = { page: 1, limit: 20 };
+      const detail = {
+        topic: { id },
+        posts: { data: [], total: 0, page: 1, limit: 20, totalPages: 0 },
+      };
+      const serviceMock = {
+        listTopics: jest.fn(),
+        getTopicDetail: jest.fn().mockResolvedValue(detail),
+      };
+      const controller = new TopicsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.getTopicDetail(id, query);
+
+      // Assert
+      expect(serviceMock.getTopicDetail).toHaveBeenCalledWith(id, query);
+      expect(result).toBe(detail);
     });
   });
 });

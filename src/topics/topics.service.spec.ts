@@ -34,7 +34,10 @@ function createDbMock(results: unknown[]) {
     calls++;
     return chain;
   });
-  return { dbMock: { select }, chains };
+  const updateWhere = jest.fn().mockResolvedValue([]);
+  const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+  const update = jest.fn().mockReturnValue({ set: updateSet });
+  return { dbMock: { select, update }, chains, updateSet, updateWhere };
 }
 
 function createService(dbMock: unknown, forumsServiceMock?: unknown) {
@@ -198,6 +201,166 @@ describe('TopicsService', () => {
       // Assert
       expect(dbMock.select).toHaveBeenCalledTimes(3);
       expect(result.total).toBe(0);
+    });
+  });
+
+  describe('getTopicDetail', () => {
+    const detailTopicRow = {
+      id: 'topic-id-1',
+      title: 'Best starter?',
+      body: 'Which one do I pick?',
+      forumId: 'forum-id-1',
+      forumName: 'General Discussion',
+      forumVisibility: 'public',
+      authorCharacterId: 'char-id-1',
+      authorName: 'Ash',
+      isPinned: false,
+      isLocked: false,
+      viewCount: 5,
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+
+    const detailPostRow = (id: string, createdAt: string, parentPostId: string | null = null) => ({
+      id,
+      topicId: 'topic-id-1',
+      parentPostId,
+      authorCharacterId: 'char-id-1',
+      authorName: 'Ash',
+      body: `Body of ${id}`,
+      createdAt: new Date(createdAt),
+    });
+
+    it('should return the topic with paginated posts in chronological order', async () => {
+      // Arrange
+      const rows = [
+        detailPostRow('post-1', '2026-10-15T00:01:00.000Z'),
+        detailPostRow('post-2', '2026-10-15T00:02:00.000Z'),
+      ];
+      const { dbMock, chains } = createDbMock([
+        [detailTopicRow],
+        [{ id: 'post-1' }, { id: 'post-2' }],
+        rows,
+      ]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.getTopicDetail('topic-id-1', { page: 1, limit: 20 });
+
+      // Assert
+      expect(result.topic.id).toBe('topic-id-1');
+      expect(result.topic.viewCount).toBe(6);
+      expect(result.posts).toEqual({ data: rows, total: 2, page: 1, limit: 20, totalPages: 1 });
+      expect(chains[2].orderBy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should apply pagination to posts as limit and offset', async () => {
+      // Arrange
+      const { dbMock, chains } = createDbMock([[detailTopicRow], [], []]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.getTopicDetail('topic-id-1', { page: 3, limit: 5 });
+
+      // Assert
+      expect(chains[2].limit).toHaveBeenCalledWith(5);
+      expect(chains[2].offset).toHaveBeenCalledWith(10);
+    });
+
+    it('should throw NotFoundError when the topic does not exist', async () => {
+      // Arrange
+      const { dbMock } = createDbMock([[], [], []]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.getTopicDetail('missing-id', { page: 1, limit: 20 });
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when the topic is deleted (same as missing)', async () => {
+      // Arrange: deleted rows are filtered in the WHERE clause, so the db returns [].
+      const { dbMock } = createDbMock([[], [], []]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.getTopicDetail('deleted-id', { page: 1, limit: 20 });
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should check forum access for the topic forum', async () => {
+      // Arrange
+      const { dbMock } = createDbMock([[detailTopicRow], [], []]);
+      const { service, forumsMock } = createService(dbMock);
+
+      // Act
+      await service.getTopicDetail('topic-id-1', { page: 1, limit: 20 });
+
+      // Assert
+      expect(forumsMock.assertForumAccess).toHaveBeenCalledWith('forum-id-1', undefined);
+    });
+
+    it('should mask forbidden forums as not found for guests', async () => {
+      // Arrange
+      const { dbMock } = createDbMock([[detailTopicRow], [], []]);
+      const { service } = createService(dbMock, {
+        assertForumAccess: jest
+          .fn()
+          .mockRejectedValue(new ForbiddenError('You do not have permission to view this forum')),
+      });
+
+      // Act
+      const promise = service.getTopicDetail('topic-id-1', { page: 1, limit: 20 });
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+
+    it('should propagate forbidden when an authenticated viewer lacks access', async () => {
+      // Arrange
+      const { dbMock } = createDbMock([[detailTopicRow], [], []]);
+      const { service, forumsMock } = createService(dbMock, {
+        assertForumAccess: jest
+          .fn()
+          .mockRejectedValue(new ForbiddenError('You do not have permission to view this forum')),
+      });
+
+      // Act
+      const promise = service.getTopicDetail('topic-id-1', { page: 1, limit: 20 }, 'user-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(forumsMock.assertForumAccess).toHaveBeenCalledWith('forum-id-1', 'user-id-1');
+    });
+
+    it('should increment the view count on each view', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createDbMock([[detailTopicRow], [], []]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.getTopicDetail('topic-id-1', { page: 1, limit: 20 });
+
+      // Assert
+      expect(updateSet).toHaveBeenCalledWith({ viewCount: 6, updatedAt: expect.any(Date) });
+      expect(result.topic.viewCount).toBe(6);
+    });
+
+    it('should return empty posts with zero totals when the topic has no posts', async () => {
+      // Arrange
+      const { dbMock } = createDbMock([[detailTopicRow], [], []]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.getTopicDetail('topic-id-1', { page: 1, limit: 20 });
+
+      // Assert
+      expect(result.posts).toEqual({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 });
     });
   });
 });
