@@ -194,3 +194,18 @@
 **Consequences**:
 - Deleted emails stay reserved (unique constraint) — re-registration after delete stays out of scope
 - Migration `0002` is purely additive (single nullable `ADD COLUMN`), safe to apply before the TASK-028 code lands
+
+---
+
+## ADR-014: Babel JS Transform in Unit Tests for ESM-Only Transitive Deps
+
+**Status**: Accepted
+
+**Context**: TASK-050 adds `isomorphic-dompurify` (spec-mandated sanitizer) for topic bodies. Its transitive chain (`jsdom` → `parse5` v8, `html-encoding-sniffer` v7, `@csstools/*` `.mjs`) ships ESM-only files that the unit Jest config (ts-jest, CJS, `node_modules` untransformed) cannot parse. ADR-009 solved the same class of problem for e2e/integration via babel-jest, but unit tests were left out.
+
+**Decision**: Mirror the ADR-009 babel transform (`@babel/plugin-transform-modules-commonjs` plus `@babel/plugin-transform-export-namespace-from` for `parse5` v8's `export * as` syntax) into `jest.config.js`, and widen all three configs' JS pattern to `^.+\.m?js$` so `.mjs` files are covered. e2e/integration configs get the same plugin and pattern because they boot `AppModule`, which now transitively loads the sanitizer.
+
+**Consequences**:
+- Unit suites pay the babel transform over `node_modules` JS plus a heavy one-time jsdom load wherever the sanitizer is imported (measured ~95s for the sanitizer spec alone); accepted cost of testing the real sanitizer instead of a mock
+- New ESM-only transitive deps need no per-package allowlist — they are transformed by default
+- Rejected alternative: swapping DOMPurify for a CJS-only sanitizer (contradicts the TASK-050 acceptance criterion naming DOMPurify)

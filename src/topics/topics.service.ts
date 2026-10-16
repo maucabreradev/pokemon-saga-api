@@ -1,13 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { SQL, and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
-import { ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '../common/exceptions/app-errors';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { sanitizeHtml } from '../common/utils/sanitize-html';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { characters } from '../database/schema/characters';
 import { forums } from '../database/schema/forums';
 import { posts } from '../database/schema/posts';
 import { topics } from '../database/schema/topics';
 import { ForumsService } from '../forums/forums.service';
+import { CreateTopicDto } from './dto/create-topic.dto';
 import { ListTopicsQueryDto } from './dto/list-topics-query.dto';
 
 export interface TopicListItem {
@@ -63,6 +65,19 @@ export interface TopicDetail {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface CreatedTopic {
+  id: string;
+  forumId: string;
+  authorCharacterId: string;
+  title: string;
+  body: string;
+  isPinned: boolean;
+  isLocked: boolean;
+  viewCount: number;
+  replyCount: number;
+  createdAt: Date;
 }
 
 const MAX_LIMIT = 50;
@@ -240,5 +255,71 @@ export class TopicsService {
       topic: { ...topic, viewCount: nextViewCount },
       posts: { data, total, page, limit, totalPages: Math.ceil(total / limit) },
     };
+  }
+
+  async createTopic(dto: CreateTopicDto, userId: string): Promise<CreatedTopic> {
+    // Main-first author: the main character posts when set, otherwise any active one.
+    const [author] = await this.db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.userId, userId),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .orderBy(desc(characters.isMainCharacter), asc(characters.createdAt))
+      .limit(1);
+
+    if (!author) {
+      throw new ForbiddenError('An active character is required to create topics');
+    }
+
+    // Throws 404 when missing, 403 when not visible (no masking on writes).
+    await this.forumsService.assertForumAccess(dto.forumId, userId);
+
+    const [forum] = await this.db
+      .select({ isLocked: forums.isLocked })
+      .from(forums)
+      .where(eq(forums.id, dto.forumId))
+      .limit(1);
+
+    if (forum?.isLocked) {
+      throw new ForbiddenError('This forum is locked and does not accept new topics');
+    }
+
+    const body = sanitizeHtml(dto.body);
+
+    if (body.trim().length === 0) {
+      throw new ValidationError('Topic body must not be empty');
+    }
+
+    const now = new Date();
+
+    const [created] = await this.db
+      .insert(topics)
+      .values({
+        forumId: dto.forumId,
+        authorCharacterId: author.id,
+        title: dto.title,
+        body,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({
+        id: topics.id,
+        forumId: topics.forumId,
+        authorCharacterId: topics.authorCharacterId,
+        title: topics.title,
+        body: topics.body,
+        isPinned: topics.isPinned,
+        isLocked: topics.isLocked,
+        viewCount: topics.viewCount,
+        replyCount: topics.replyCount,
+        createdAt: topics.createdAt,
+      });
+
+    return created;
   }
 }

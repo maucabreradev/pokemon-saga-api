@@ -1,4 +1,4 @@
-import { ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '../common/exceptions/app-errors';
 import { TopicsService } from './topics.service';
 
 jest.mock('../database/database.module', () => ({
@@ -361,6 +361,183 @@ describe('TopicsService', () => {
 
       // Assert
       expect(result.posts).toEqual({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 });
+    });
+  });
+
+  describe('createTopic', () => {
+    const dto = {
+      forumId: 'forum-id-1',
+      title: 'Best starter?',
+      body: 'Which one do I pick?',
+    };
+
+    const createdRow = {
+      id: 'topic-id-1',
+      forumId: 'forum-id-1',
+      authorCharacterId: 'main-char-id',
+      title: 'Best starter?',
+      body: 'Which one do I pick?',
+      isPinned: false,
+      isLocked: false,
+      viewCount: 0,
+      replyCount: 0,
+      createdAt: new Date('2026-10-16T00:00:00.000Z'),
+    };
+
+    function createCreateDbMock(selectResults: unknown[], insertedRow: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chains: any[] = [];
+      let selectCalls = 0;
+      const select = jest.fn().mockImplementation(() => {
+        const chain = createChain(selectResults[selectCalls]);
+        chains.push(chain);
+        selectCalls++;
+        return chain;
+      });
+      const returning = jest.fn().mockResolvedValue([insertedRow]);
+      const values = jest.fn().mockReturnValue({ returning });
+      const insert = jest.fn().mockReturnValue({ values });
+      return { dbMock: { select, update: jest.fn(), insert }, chains, values, insert };
+    }
+
+    it('should create a topic authored by the main-first character', async () => {
+      // Arrange
+      const { dbMock, values } = createCreateDbMock(
+        [[{ id: 'main-char-id' }], [{ isLocked: false }]],
+        createdRow,
+      );
+      const { service, forumsMock } = createService(dbMock);
+
+      // Act
+      const result = await service.createTopic(dto, 'user-id-1');
+
+      // Assert
+      expect(forumsMock.assertForumAccess).toHaveBeenCalledWith('forum-id-1', 'user-id-1');
+      expect(values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          forumId: 'forum-id-1',
+          authorCharacterId: 'main-char-id',
+          title: 'Best starter?',
+          body: 'Which one do I pick?',
+        }),
+      );
+      expect(result).toEqual(createdRow);
+    });
+
+    it('should order the character lookup main-first', async () => {
+      // Arrange
+      const { dbMock, chains } = createCreateDbMock(
+        [[{ id: 'main-char-id' }], [{ isLocked: false }]],
+        createdRow,
+      );
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.createTopic(dto, 'user-id-1');
+
+      // Assert
+      expect(chains[0].orderBy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw ForbiddenError when the user has no active character', async () => {
+      // Arrange
+      const { dbMock, insert } = createCreateDbMock([[], [{ isLocked: false }]], createdRow);
+      const { service, forumsMock } = createService(dbMock);
+
+      // Act
+      const promise = service.createTopic(dto, 'user-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(forumsMock.assertForumAccess).not.toHaveBeenCalled();
+      expect(insert).not.toHaveBeenCalled();
+    });
+
+    it('should propagate not found when the forum does not exist', async () => {
+      // Arrange
+      const { dbMock, insert } = createCreateDbMock([[{ id: 'main-char-id' }]], createdRow);
+      const { service } = createService(dbMock, {
+        assertForumAccess: jest.fn().mockRejectedValue(new NotFoundError('Forum', 'forum-id-1')),
+      });
+
+      // Act
+      const promise = service.createTopic(dto, 'user-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(insert).not.toHaveBeenCalled();
+    });
+
+    it('should propagate forbidden when the forum is not visible', async () => {
+      // Arrange
+      const { dbMock, insert } = createCreateDbMock([[{ id: 'main-char-id' }]], createdRow);
+      const { service } = createService(dbMock, {
+        assertForumAccess: jest
+          .fn()
+          .mockRejectedValue(new ForbiddenError('You do not have permission to view this forum')),
+      });
+
+      // Act
+      const promise = service.createTopic(dto, 'user-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(insert).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the forum is locked', async () => {
+      // Arrange
+      const { dbMock, insert } = createCreateDbMock(
+        [[{ id: 'main-char-id' }], [{ isLocked: true }]],
+        createdRow,
+      );
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.createTopic(dto, 'user-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(insert).not.toHaveBeenCalled();
+    });
+
+    it('should store the sanitized body', async () => {
+      // Arrange
+      const { dbMock, values } = createCreateDbMock(
+        [[{ id: 'main-char-id' }], [{ isLocked: false }]],
+        createdRow,
+      );
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.createTopic(
+        { ...dto, body: '<script>alert("xss")</script><p>Hello</p>' },
+        'user-id-1',
+      );
+
+      // Assert
+      const stored = values.mock.calls[0][0] as { body: string };
+      expect(stored.body).not.toContain('<script>');
+      expect(stored.body).toContain('Hello');
+    });
+
+    it('should throw ValidationError when the body sanitizes to empty', async () => {
+      // Arrange
+      const { dbMock, insert } = createCreateDbMock(
+        [[{ id: 'main-char-id' }], [{ isLocked: false }]],
+        createdRow,
+      );
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.createTopic(
+        { ...dto, body: '<script>alert("xss")</script>' },
+        'user-id-1',
+      );
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ValidationError);
+      expect(insert).not.toHaveBeenCalled();
     });
   });
 });
