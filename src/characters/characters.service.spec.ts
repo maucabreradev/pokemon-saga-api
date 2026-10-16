@@ -511,4 +511,122 @@ describe('CharactersService', () => {
       expect(updateSet).not.toHaveBeenCalled();
     });
   });
+
+  describe('setMainCharacter', () => {
+    const readableId = 'GreenAppleHunter123';
+    const ownerId = '11111111-1111-4111-8111-111111111111';
+    const otherUserId = '99999999-9999-4999-8999-999999999999';
+    const characterRow = {
+      id: 'char-id',
+      userId: ownerId,
+      status: 'active',
+      isMainCharacter: false,
+    };
+    const fullRow = {
+      id: 'char-id',
+      readableId,
+      publicName: 'Pikachu',
+      status: 'active',
+      isMainCharacter: true,
+      bio: 'Electric mouse',
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+
+    function createSetMainDbMock(characterRows: unknown[], fullRows: unknown[]) {
+      const select = jest.fn().mockImplementation(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fromResult: any = {};
+        fromResult.leftJoin = jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(fullRows),
+          }),
+        });
+        fromResult.where = jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue(characterRows),
+        });
+        return { from: jest.fn().mockReturnValue(fromResult) };
+      });
+
+      const updateWhere = jest.fn().mockResolvedValue([]);
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+      const transactionMock = jest.fn((cb: (tx: unknown) => unknown) => cb({ update }));
+
+      return {
+        dbMock: { select, transaction: transactionMock },
+        transactionMock,
+        updateSet,
+      };
+    }
+
+    it('should clear the previous main and set the target as main in one transaction', async () => {
+      const { dbMock, transactionMock, updateSet } = createSetMainDbMock([characterRow], [fullRow]);
+      const service = createService(dbMock);
+
+      const result = await service.setMainCharacter(ownerId, readableId);
+
+      expect(result).toEqual(fullRow);
+      expect(transactionMock).toHaveBeenCalledTimes(1);
+      expect(updateSet).toHaveBeenCalledTimes(2);
+      expect(updateSet).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ isMainCharacter: false, updatedAt: expect.any(Date) }),
+      );
+      expect(updateSet).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ isMainCharacter: true, updatedAt: expect.any(Date) }),
+      );
+    });
+
+    it('should return the character without writes when it is already main', async () => {
+      const mainRow = { ...characterRow, isMainCharacter: true };
+      const { dbMock, transactionMock } = createSetMainDbMock([mainRow], [fullRow]);
+      const service = createService(dbMock);
+
+      const result = await service.setMainCharacter(ownerId, readableId);
+
+      expect(result).toEqual(fullRow);
+      expect(transactionMock).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when the character does not exist', async () => {
+      const { dbMock } = createSetMainDbMock([], []);
+      const service = createService(dbMock);
+
+      await expect(service.setMainCharacter(ownerId, 'NopeNopeNope000')).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('should throw NotFoundError when the character is deleted (same as missing)', async () => {
+      // Deleted rows are filtered in the WHERE clause, so the db returns [].
+      const { dbMock } = createSetMainDbMock([], []);
+      const service = createService(dbMock);
+
+      await expect(service.setMainCharacter(ownerId, readableId)).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('should throw ForbiddenError when the requester is not the owner', async () => {
+      const { dbMock, transactionMock } = createSetMainDbMock([characterRow], []);
+      const service = createService(dbMock);
+
+      await expect(service.setMainCharacter(otherUserId, readableId)).rejects.toBeInstanceOf(
+        ForbiddenError,
+      );
+      expect(transactionMock).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the character is banned', async () => {
+      const bannedRow = { ...characterRow, status: 'banned' };
+      const { dbMock, transactionMock } = createSetMainDbMock([bannedRow], []);
+      const service = createService(dbMock);
+
+      await expect(service.setMainCharacter(ownerId, readableId)).rejects.toBeInstanceOf(
+        ForbiddenError,
+      );
+      expect(transactionMock).not.toHaveBeenCalled();
+    });
+  });
 });
