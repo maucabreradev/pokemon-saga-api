@@ -1,7 +1,7 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 3 complete — Users & Characters done (TASK-038 complete, next TASK-039 Phase 4 Forums)
+**Current phase**: Phase 4 in progress — Forums (TASK-039 complete, next TASK-040 forum detail)
 
 ## Verification (2026-10-16, branch develop)
 
@@ -13,7 +13,7 @@
 
 ## Current Status
 
-Phase 3 is complete. TASK-038 (GET /characters/:readableId/posts) implemented via CharactersService.getCharacterPosts and CharactersController.getCharacterPosts. Public endpoint; 404 for missing/deleted/banned character; posts filtered isDeleted=false + deletedAt IS NULL plus non-deleted topic, joined with topics, newest-first, plain array with shared PaginationQueryDto; 200-char bodyPreview + topicId included. No migration (db:generate clean). Next is TASK-039 (GET /forums tree, Phase 4).
+Phase 4 is in progress. TASK-039 (GET /forums tree) implemented via ForumsService.getTree and ForumsController.getTree. Public endpoint; returns only public categories/forums (guest view — authenticated visibility filtering lands in TASK-047); forums nested via parentForumId with displayOrder ordering, orphans attached as roots; 209/209 unit pass, lint clean, no migration (db:generate clean). Next is TASK-040 (GET /forums/:id forum detail).
 
 ## Last Completed
 
@@ -24,6 +24,7 @@ Phase 3 is complete. TASK-038 (GET /characters/:readableId/posts) implemented vi
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-039 | GET /forums via ForumsService.getTree (public, public-only guest view, nested parent map + displayOrder, orphans as roots); 209/209 unit, lint clean, no migration — Phase 4 in progress |
 | 2026-10-16 | TASK-038 | GET :readableId/posts via getCharacterPosts (public, topic join + double deleted filter both sides, DESC, preview 200 + topicId, plain array page/limit); 203/203 unit, 3/3 e2e, no migration — Phase 3 complete |
 | 2026-10-16 | TASK-037 | GET :readableId/friends via getCharacterFriends (public, 2 accepted-only queries, friend masking, merge newest-first + PaginationQueryDto slice); 196/196 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-036 | GET :readableId/topics via getCharacterTopics (public, forum join, double deleted filter, DESC, plain array page/limit, shared PaginationQueryDto); 190/190 unit, 3/3 e2e, no migration |
