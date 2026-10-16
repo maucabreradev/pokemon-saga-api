@@ -128,6 +128,31 @@ pnpm test:cov
 pnpm test:watch
 ```
 
+## Suite Time Budgets
+
+| Suite | Budget |
+|-------|--------|
+| Unit (`pnpm test`) | ~55s |
+| E2E (`pnpm test:e2e`) | ~90s |
+
+If a run blows past its budget, suspect a heavy dependency (DOM, native bindings, whole-`node_modules` transforms) — not "slow CI". See ADR-015 for the precedent.
+
+## ESM Dependencies under Jest
+
+`node_modules` is not transformed by default. If a suite fails with
+`Unexpected token 'export'` (or `Cannot use import statement outside a module`)
+naming a path under `node_modules/.pnpm/<pkg>@<version>/`, add `<pkg>@` to the
+allowlist in `jest.config.js` — and to `tests/jest-e2e.json` /
+`tests/jest-integration.json` only when `AppModule` loads that package.
+Never set `transformIgnorePatterns: []` globally: transforming all of
+`node_modules` explodes worker memory and suite time. See ADR-009, ADR-014, ADR-015.
+
+## Reading CI Results
+
+- Required checks must be green: Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement.
+- `Coverage (informational)` failing is expected until Phase 9 completes (see `State.md`) — it does not block merges.
+- When a required check fails, start from the job log: the first error block (exact file path, worker crash vs assertion vs timeout) determines the fix. A locally green suite plus CI red means environment difference (Node version, resources) — check `AGENTS.md` → Runtime first.
+
 ## Test Commands in CI
 
 ```yaml

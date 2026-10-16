@@ -65,7 +65,7 @@ The Pokémon Saga API is a NestJS application following a modular monolith archi
 | Authorization | Role-based guards (`@Roles()` decorator) |
 | Rate Limiting | `@nestjs/throttler` — per-IP and per-user limits |
 | Input Validation | `class-validator` + `class-transformer` on all DTOs |
-| XSS Prevention | DOMPurify sanitization on HTML content |
+| XSS Prevention | `sanitizeHtml()` boundary (`src/common/utils/sanitize-html.ts`) on all user HTML — never import sanitizer libs directly |
 | Password Storage | bcrypt with 12 salt rounds |
 | Token Storage | Refresh tokens stored as hashes, rotation on use |
 

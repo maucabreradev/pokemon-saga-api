@@ -14,7 +14,7 @@ A REST API for an online role-playing forum set in the Pokémon universe. Users 
 
 ## Prerequisites
 
-- Node.js >= 20
+- Node.js 20 (pinned in CI and Docker — dev must match; newer local Node hides incompatibilities)
 - pnpm >= 9
 - Docker & Docker Compose
 
