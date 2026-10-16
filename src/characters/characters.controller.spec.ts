@@ -29,6 +29,7 @@ describe('CharactersController', () => {
     getPublicProfile: jest.Mock;
     updateProfile: jest.Mock;
     changeReadableId: jest.Mock;
+    setMainCharacter: jest.Mock;
   };
 
   beforeEach(() => {
@@ -37,6 +38,7 @@ describe('CharactersController', () => {
       getPublicProfile: jest.fn(),
       updateProfile: jest.fn(),
       changeReadableId: jest.fn(),
+      setMainCharacter: jest.fn(),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
@@ -120,6 +122,26 @@ describe('CharactersController', () => {
 
       await expect(controller.changeReadableId(readableId, userId, dto)).resolves.toEqual(updated);
       expect(service.changeReadableId).toHaveBeenCalledWith(userId, readableId, dto);
+    });
+  });
+
+  describe('setMainCharacter', () => {
+    it('should delegate to the service with user id and readable id', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
+      const readableId = 'GreenAppleHunter123';
+      const updated = {
+        id: 'char-id',
+        readableId,
+        publicName: 'Pikachu',
+        status: 'active',
+        isMainCharacter: true,
+        bio: 'Electric mouse',
+        createdAt: new Date(),
+      };
+      service.setMainCharacter.mockResolvedValue(updated);
+
+      await expect(controller.setMainCharacter(readableId, userId)).resolves.toEqual(updated);
+      expect(service.setMainCharacter).toHaveBeenCalledWith(userId, readableId);
     });
   });
 });
