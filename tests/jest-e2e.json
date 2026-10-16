@@ -5,7 +5,7 @@
   "testRegex": ".*\\.e2e-spec\\.ts$",
   "transform": {
     "^.+\\.ts$": "ts-jest",
-    "^.+\\.m?js$": [
+    "^.+\\.js$": [
       "babel-jest",
       {
         "configFile": false,
@@ -17,10 +17,7 @@
       }
     ]
   },
-  "transformIgnorePatterns": [
-    "/node_modules/\\.pnpm/(?!(parse5@|html-encoding-sniffer@|jsdom@|isomorphic-dompurify@|entities@|cssstyle@|@nestjs\\+|@csstools\\+|@exodus\\+|@asamuzakjp\\+|data-urls@|decimal\\.js@|whatwg-encoding@))",
-    "/node_modules/(?!\\.pnpm|isomorphic-dompurify|jsdom|parse5|entities|cssstyle|@nestjs|html-encoding-sniffer|@csstools|@exodus|@asamuzakjp|data-urls|decimal\\.js|whatwg-encoding)"
-  ],
+  "transformIgnorePatterns": [],
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/src/$1",
     "^@nestjs/swagger$": "<rootDir>/tests/e2e/swagger.stub.js"

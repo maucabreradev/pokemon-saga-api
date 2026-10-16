@@ -14,7 +14,7 @@
 
 ## Current Status
 
-Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.createTopic: main-first active character authors (403 without), assertForumAccess (404/403), locked forums rejected (403), body sanitized via shared sanitizeHtml util (400 when empty after sanitize), single insert, 201 response. New dep isomorphic-dompurify; unit/e2e/integration jest configs extended with export-namespace plugin + .mjs pattern (ADR-014). No topic_count counter and no migration per plan (counts stay computed). 324/324 unit pass, 3/3 e2e pass, lint + tsc clean, db:generate clean. Next is TASK-051 (PATCH /topics/:id, Phase 5).
+Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.createTopic: main-first active character authors (403 without), assertForumAccess (404/403), locked forums rejected (403), body sanitized via shared sanitizeHtml util (400 when empty after sanitize), single insert, 201 response. Sanitizer is sanitize-html (ADR-015 superseded ADR-014: the DOMPurify/jsdom chain crashed at runtime on Node 20 in CI and prod). No topic_count counter and no migration per plan (counts stay computed). Next is TASK-051 (PATCH /topics/:id, Phase 5).
 
 ## Last Completed
 
@@ -25,7 +25,7 @@ Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.cre
 
 | Date | Task | Summary |
 |------|------|---------|
-| 2026-10-16 | TASK-050 | POST /topics via createTopic (main-first author, visibility/lock guards, DOMPurify + ADR-014 jest ESM fix); 324/324 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
+| 2026-10-16 | TASK-050 | POST /topics via createTopic (main-first author, visibility/lock guards, sanitize-html + ADR-015); unit, e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-049 | GET /topics/:id via getTopicDetail (visibility-checked, viewCount increment, flat ASC posts + parentPostId); 305/305 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-048 | GET /topics via TopicsService.listTopics (guest public-only + 404 mask, forum/author filters, 3 sorts, pagination metadata, limit 50); 295/295 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-047 | assertForumAccess primitive (404 missing, 403 guest/charless, Phase 5 wiring deferred); 278/278 unit, lint + tsc clean, no migration — Phase 4 complete |

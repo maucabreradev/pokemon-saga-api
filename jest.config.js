@@ -5,7 +5,7 @@ module.exports = {
   testRegex: '.*\\.spec\\.ts$',
   transform: {
     '^.+\\.ts$': 'ts-jest',
-    '^.+\\.m?js$': [
+    '^.+\\.js$': [
       'babel-jest',
       {
         configFile: false,
@@ -17,12 +17,11 @@ module.exports = {
       },
     ],
   },
-  // Only ESM-only transitive deps are transformed (ADR-014). Everything else
-  // in node_modules keeps the default ignore for speed and memory.
-  // The first pattern covers pnpm's .pnpm layout, the second plain layouts.
+  // Only ESM-only transitive deps of the sanitizer are transformed (ADR-015).
+  // Small pure-JS packages — negligible cost versus the former jsdom chain.
   transformIgnorePatterns: [
-    '/node_modules/\\.pnpm/(?!(parse5@|html-encoding-sniffer@|jsdom@|isomorphic-dompurify@|entities@|cssstyle@|@csstools\\+|@exodus\\+|@asamuzakjp\\+|data-urls@|decimal\\.js@|whatwg-encoding@))',
-    '/node_modules/(?!\\.pnpm|isomorphic-dompurify|jsdom|parse5|entities|cssstyle|html-encoding-sniffer|@csstools|@exodus|@asamuzakjp|data-urls|decimal\\.js|whatwg-encoding)',
+    '/node_modules/\\.pnpm/(?!(htmlparser2@|entities@|domhandler@|domelementtype@|domutils@|dom-serializer@|css-select@|css-what@))',
+    '/node_modules/(?!\\.pnpm|htmlparser2|entities|domhandler|domelementtype|domutils|dom-serializer|css-select|css-what)',
   ],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: './coverage',

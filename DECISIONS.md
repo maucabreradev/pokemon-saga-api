@@ -199,7 +199,9 @@
 
 ## ADR-014: Babel JS Transform in Unit Tests for ESM-Only Transitive Deps
 
-**Status**: Accepted
+**Status**: Superseded by ADR-015 (2026-10-16 — the DOMPurify/jsdom chain was removed entirely instead of transforming it)
+
+**Context**: (kept for history — see ADR-015 for the outcome)
 
 **Context**: TASK-050 adds `isomorphic-dompurify` (spec-mandated sanitizer) for topic bodies. Its transitive chain (`jsdom` → `parse5` v8, `html-encoding-sniffer` v7, `@csstools/*` `.mjs`) ships ESM-only files that the unit Jest config (ts-jest, CJS, `node_modules` untransformed) cannot parse. ADR-009 solved the same class of problem for e2e/integration via babel-jest, but unit tests were left out.
 
@@ -210,3 +212,18 @@
 - New ESM-only transitive deps surface as `Unexpected token 'export'` naming the exact `.pnpm` path — add the package to the allowlist in all three configs
 - e2e/integration allowlists additionally cover `@nestjs` ESM dists (original ADR-009 subjects); unit does not need them
 - Rejected alternative: swapping DOMPurify for a CJS-only sanitizer (contradicts the TASK-050 acceptance criterion naming DOMPurify)
+
+---
+
+## ADR-015: sanitize-html Instead of DOMPurify (Supersedes ADR-014)
+
+**Status**: Accepted
+
+**Context**: TASK-050 implemented body sanitization with `isomorphic-dompurify` per its acceptance criterion. CI then failed on Node 20 (`TypeError: Cannot read properties of undefined (reading 'bind')` in `undici/lib/interceptor/decompress.js`, loaded via `jsdom`): undici 8.x uses a Node API missing in Node 20. Local suites passed only because dev machines run Node 22+. Production (`node:20-alpine` in all Dockerfile stages) and CI (pinned Node 20) would both crash at boot, since `AppModule` transitively loads the sanitizer. Extending the Jest ESM transform (ADR-014) fixed parsing but cannot fix a genuine runtime incompatibility.
+
+**Decision**: Sanitize with the `sanitize-html` package (htmlparser2, pure CJS-ish small modules, no DOM, no jsdom/undici) behind the same `sanitizeHtml()` util boundary. Its ESM-only files (`htmlparser2`, `entities`, `domhandler`, `domelementtype`, `domutils`, `dom-serializer`, `css-select`, `css-what`) are covered by a narrow `transformIgnorePatterns` allowlist in `jest.config.js` only; e2e/integration keep their original transform-all behavior plus the export-namespace plugin (needed for `export * as` syntax). The `@babel/plugin-transform-export-namespace-from` dev dependency stays for that reason. The acceptance criterion named DOMPurify, but its intent (XSS-safe bodies, proven by real-behavior tests) is preserved.
+
+**Consequences**:
+- No ESM-in-`node_modules` problem remains: zero transform config changes, suite times back to baseline
+- `sanitize-html` defaults apply (script/style stripped, event handlers stripped, safe formatting kept); TASK-059 reuses and tunes the allowlist for post bodies if needed
+- If a future requirement truly needs DOMPurify semantics, the migration path is upgrading runtime Node across Dockerfile + CI first — never while pinned to Node 20
