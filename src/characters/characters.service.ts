@@ -1,10 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull, ne } from 'drizzle-orm';
+import { and, desc, eq, isNull, ne } from 'drizzle-orm';
 import { ConflictError, ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
 import { UserRole } from '../auth/decorators/roles.decorator';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { characters } from '../database/schema/characters';
 import { charactersProfile } from '../database/schema/characters-profile';
+import { forums } from '../database/schema/forums';
+import { topics } from '../database/schema/topics';
 import { users } from '../database/schema/users';
 import { generateUniqueReadableId } from '../common/utils/readable-id-generator';
 import { CreateCharacterDto } from './dto/create-character.dto';
@@ -28,6 +31,14 @@ export interface CharacterPublicProfile {
   avatarUrl: string | null;
   customTitle: string | null;
   signature: string | null;
+  createdAt: Date;
+}
+
+export interface CharacterTopicSummary {
+  id: string;
+  title: string;
+  forumName: string;
+  replyCount: number;
   createdAt: Date;
 }
 
@@ -330,6 +341,51 @@ export class CharactersService {
       .update(characters)
       .set({ status: 'deleted', deletedAt: now, updatedAt: now })
       .where(eq(characters.id, character.id));
+  }
+
+  async getCharacterTopics(
+    readableId: string,
+    query: PaginationQueryDto,
+  ): Promise<CharacterTopicSummary[]> {
+    const [character] = await this.db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.readableId, readableId),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!character) {
+      throw new NotFoundError('Character', readableId);
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    return this.db
+      .select({
+        id: topics.id,
+        title: topics.title,
+        forumName: forums.name,
+        replyCount: topics.replyCount,
+        createdAt: topics.createdAt,
+      })
+      .from(topics)
+      .innerJoin(forums, eq(topics.forumId, forums.id))
+      .where(
+        and(
+          eq(topics.authorCharacterId, character.id),
+          eq(topics.isDeleted, false),
+          isNull(topics.deletedAt),
+        ),
+      )
+      .orderBy(desc(topics.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
   }
 
   async create(userId: string, dto: CreateCharacterDto): Promise<CharacterWithProfile> {
