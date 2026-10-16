@@ -2,6 +2,7 @@ import { CharactersController } from './characters.controller';
 import { CharactersService } from './characters.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
+import { UpdateReadableIdDto } from './dto/update-readable-id.dto';
 
 jest.mock('@nestjs/swagger', () => ({
   ApiTags: () => () => undefined,
@@ -12,6 +13,7 @@ jest.mock('@nestjs/swagger', () => ({
   ApiBadRequestResponse: () => () => undefined,
   ApiUnauthorizedResponse: () => () => undefined,
   ApiForbiddenResponse: () => () => undefined,
+  ApiConflictResponse: () => () => undefined,
   ApiBearerAuth: () => () => undefined,
   ApiParam: () => () => undefined,
 }));
@@ -22,10 +24,20 @@ jest.mock('../database/database.module', () => ({
 
 describe('CharactersController', () => {
   let controller: CharactersController;
-  let service: { create: jest.Mock; getPublicProfile: jest.Mock; updateProfile: jest.Mock };
+  let service: {
+    create: jest.Mock;
+    getPublicProfile: jest.Mock;
+    updateProfile: jest.Mock;
+    changeReadableId: jest.Mock;
+  };
 
   beforeEach(() => {
-    service = { create: jest.fn(), getPublicProfile: jest.fn(), updateProfile: jest.fn() };
+    service = {
+      create: jest.fn(),
+      getPublicProfile: jest.fn(),
+      updateProfile: jest.fn(),
+      changeReadableId: jest.fn(),
+    };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
   });
@@ -87,6 +99,27 @@ describe('CharactersController', () => {
 
       await expect(controller.updateProfile(readableId, userId, dto)).resolves.toEqual(updated);
       expect(service.updateProfile).toHaveBeenCalledWith(userId, readableId, dto);
+    });
+  });
+
+  describe('changeReadableId', () => {
+    it('should delegate to the service with user id, current id and dto', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
+      const readableId = 'GreenAppleHunter123';
+      const dto: UpdateReadableIdDto = { readableId: 'BlueOceanRunner456' };
+      const updated = {
+        readableId: dto.readableId,
+        publicName: 'Pikachu',
+        bio: 'Electric mouse',
+        avatarUrl: null,
+        customTitle: null,
+        signature: null,
+        createdAt: new Date(),
+      };
+      service.changeReadableId.mockResolvedValue(updated);
+
+      await expect(controller.changeReadableId(readableId, userId, dto)).resolves.toEqual(updated);
+      expect(service.changeReadableId).toHaveBeenCalledWith(userId, readableId, dto);
     });
   });
 });

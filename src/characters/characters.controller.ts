@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from 
 import {
   ApiBearerAuth,
   ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -15,6 +16,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
+import { UpdateReadableIdDto } from './dto/update-readable-id.dto';
 import { CharactersService } from './characters.service';
 import { ThrottleCharacterCreation } from '../config/rate-limit.config';
 
@@ -100,5 +102,36 @@ export class CharactersController {
     @Body() dto: UpdateCharacterDto,
   ) {
     return this.charactersService.updateProfile(userId, readableId, dto);
+  }
+
+  @Patch(':readableId/readable-id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change character readable ID (one-time rename)' })
+  @ApiParam({ name: 'readableId', example: 'GreenAppleHunter123' })
+  @ApiOkResponse({
+    description: 'Character with the new readable ID',
+    schema: {
+      example: {
+        readableId: 'BlueOceanRunner456',
+        publicName: 'Pikachu',
+        bio: 'Electric mouse Pokemon',
+        avatarUrl: 'https://example.com/avatar.png',
+        customTitle: 'Champion',
+        signature: 'Gotta catch em all',
+        createdAt: '2026-10-15T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Invalid readable ID format' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Not the owner, banned, or already renamed' })
+  @ApiNotFoundResponse({ description: 'Character not found' })
+  @ApiConflictResponse({ description: 'Readable ID already taken' })
+  async changeReadableId(
+    @Param('readableId') readableId: string,
+    @CurrentUser('sub') userId: string,
+    @Body() dto: UpdateReadableIdDto,
+  ) {
+    return this.charactersService.changeReadableId(userId, readableId, dto);
   }
 }
