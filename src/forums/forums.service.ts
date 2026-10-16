@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
-import { ConflictError, NotFoundError } from '../common/exceptions/app-errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { categories } from '../database/schema/categories';
+import { characters } from '../database/schema/characters';
 import { forums } from '../database/schema/forums';
 import { topics } from '../database/schema/topics';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -396,6 +397,55 @@ export class ForumsService {
     }
 
     await this.db.delete(forums).where(eq(forums.id, id));
+  }
+
+  /**
+   * Reusable visibility primitive for topic/post endpoints (Phase 5).
+   * Returns the forum visibility when the viewer may proceed, throws otherwise.
+   */
+  async assertForumAccess(
+    forumId: string,
+    userId?: string,
+  ): Promise<'public' | 'registered' | 'characters_only'> {
+    const [forum] = await this.db
+      .select({ id: forums.id, visibility: forums.visibility })
+      .from(forums)
+      .where(eq(forums.id, forumId))
+      .limit(1);
+
+    if (!forum) {
+      throw new NotFoundError('Forum', forumId);
+    }
+
+    if (forum.visibility === 'public') {
+      return forum.visibility;
+    }
+
+    if (userId === undefined) {
+      throw new ForbiddenError('You do not have permission to view this forum');
+    }
+
+    if (forum.visibility === 'registered') {
+      return forum.visibility;
+    }
+
+    const [character] = await this.db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.userId, userId),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!character) {
+      throw new ForbiddenError('You do not have permission to view this forum');
+    }
+
+    return forum.visibility;
   }
 
   async reorderForum(id: string, dto: UpdateOrderDto) {
