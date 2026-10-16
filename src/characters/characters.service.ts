@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import { ConflictError, ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
+import { UserRole } from '../auth/decorators/roles.decorator';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { characters } from '../database/schema/characters';
 import { charactersProfile } from '../database/schema/characters-profile';
@@ -294,6 +295,41 @@ export class CharactersService {
       .limit(1);
 
     return updated;
+  }
+
+  async deleteCharacter(userId: string, userRole: UserRole, readableId: string): Promise<void> {
+    const [character] = await this.db
+      .select({
+        id: characters.id,
+        userId: characters.userId,
+        status: characters.status,
+        deletedAt: characters.deletedAt,
+      })
+      .from(characters)
+      .where(eq(characters.readableId, readableId))
+      .limit(1);
+
+    if (!character) {
+      throw new NotFoundError('Character', readableId);
+    }
+
+    if (character.deletedAt !== null || character.status === 'deleted') {
+      return;
+    }
+
+    const isOwner = character.userId === userId;
+    const isStaff = userRole === 'admin' || userRole === 'webmaster';
+
+    if (!isOwner && !isStaff) {
+      throw new ForbiddenError('You do not own this character');
+    }
+
+    const now = new Date();
+
+    await this.db
+      .update(characters)
+      .set({ status: 'deleted', deletedAt: now, updatedAt: now })
+      .where(eq(characters.id, character.id));
   }
 
   async create(userId: string, dto: CreateCharacterDto): Promise<CharacterWithProfile> {
