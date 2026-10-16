@@ -1,14 +1,18 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { CharactersService } from './characters.service';
 import { ThrottleCharacterCreation } from '../config/rate-limit.config';
@@ -42,5 +46,28 @@ export class CharactersController {
   @ApiForbiddenResponse({ description: 'Maximum of 3 active characters reached' })
   async create(@CurrentUser('sub') userId: string, @Body() dto: CreateCharacterDto) {
     return this.charactersService.create(userId, dto);
+  }
+
+  @Get(':readableId')
+  @Public()
+  @ApiOperation({ summary: 'Get character public profile' })
+  @ApiParam({ name: 'readableId', example: 'GreenAppleHunter123' })
+  @ApiOkResponse({
+    description: 'Character public profile',
+    schema: {
+      example: {
+        readableId: 'GreenAppleHunter123',
+        publicName: 'Pikachu',
+        bio: 'Electric mouse Pokemon',
+        avatarUrl: 'https://example.com/avatar.png',
+        customTitle: 'Champion',
+        signature: 'Gotta catch em all',
+        createdAt: '2026-10-15T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Character not found' })
+  async getByReadableId(@Param('readableId') readableId: string) {
+    return this.charactersService.getPublicProfile(readableId);
   }
 }

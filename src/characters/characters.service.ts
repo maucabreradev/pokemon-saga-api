@@ -18,9 +18,48 @@ export interface CharacterWithProfile {
   createdAt: Date;
 }
 
+export interface CharacterPublicProfile {
+  readableId: string;
+  publicName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  customTitle: string | null;
+  signature: string | null;
+  createdAt: Date;
+}
+
 @Injectable()
 export class CharactersService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+
+  async getPublicProfile(readableId: string): Promise<CharacterPublicProfile> {
+    const [row] = await this.db
+      .select({
+        readableId: characters.readableId,
+        publicName: characters.publicName,
+        bio: charactersProfile.bio,
+        avatarUrl: charactersProfile.avatarUrl,
+        customTitle: charactersProfile.customTitle,
+        signature: charactersProfile.signature,
+        createdAt: characters.createdAt,
+      })
+      .from(characters)
+      .leftJoin(charactersProfile, eq(charactersProfile.characterId, characters.id))
+      .where(
+        and(
+          eq(characters.readableId, readableId),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!row) {
+      throw new NotFoundError('Character', readableId);
+    }
+
+    return row;
+  }
 
   async create(userId: string, dto: CreateCharacterDto): Promise<CharacterWithProfile> {
     const [user] = await this.db
