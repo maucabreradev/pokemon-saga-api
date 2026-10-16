@@ -8,6 +8,7 @@ import { topics } from '../database/schema/topics';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateForumDto } from './dto/create-forum.dto';
 import { UpdateForumDto } from './dto/update-forum.dto';
+import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 
 export interface ForumTreeNode {
   id: string;
@@ -320,6 +321,34 @@ export class ForumsService {
         ...(dto.description !== undefined ? { description: dto.description } : {}),
         updatedAt: now,
       })
+      .where(eq(forums.id, id))
+      .returning({
+        id: forums.id,
+        categoryId: forums.categoryId,
+        parentForumId: forums.parentForumId,
+        name: forums.name,
+        description: forums.description,
+        visibility: forums.visibility,
+        displayOrder: forums.displayOrder,
+      });
+
+    return updated;
+  }
+
+  async changeForumVisibility(id: string, dto: UpdateVisibilityDto) {
+    const [forum] = await this.db
+      .select({ id: forums.id })
+      .from(forums)
+      .where(eq(forums.id, id))
+      .limit(1);
+
+    if (!forum) {
+      throw new NotFoundError('Forum', id);
+    }
+
+    const [updated] = await this.db
+      .update(forums)
+      .set({ visibility: dto.visibility, updatedAt: new Date() })
       .where(eq(forums.id, id))
       .returning({
         id: forums.id,

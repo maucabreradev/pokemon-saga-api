@@ -643,4 +643,70 @@ describe('ForumsService', () => {
       expect(dbMock.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('changeForumVisibility', () => {
+    const FORUM_ID = '22222222-2222-4222-8222-222222222222';
+
+    function createVisibilityDbMock(lookupRows: unknown[]) {
+      const selectMock = jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(lookupRows),
+          }),
+        }),
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const setMock = jest.fn((input: any) => ({
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([
+            {
+              id: FORUM_ID,
+              categoryId: '11111111-1111-4111-8111-111111111111',
+              parentForumId: null,
+              name: 'Announcements',
+              description: null,
+              visibility: input.visibility,
+              displayOrder: 0,
+            },
+          ]),
+        }),
+      }));
+      const updateMock = jest.fn().mockReturnValue({ set: setMock });
+      return { dbMock: { select: selectMock, update: updateMock }, setMock };
+    }
+
+    it('should change visibility and return the updated forum', async () => {
+      // Arrange
+      const { dbMock, setMock } = createVisibilityDbMock([{ id: FORUM_ID }]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const updated = await service.changeForumVisibility(FORUM_ID, {
+        visibility: 'registered',
+      });
+
+      // Assert
+      expect(setMock).toHaveBeenCalledWith(expect.objectContaining({ visibility: 'registered' }));
+      expect(updated.visibility).toBe('registered');
+      expect(updated.id).toBe(FORUM_ID);
+    });
+
+    it('should throw NotFoundError for a missing forum', async () => {
+      // Arrange
+      const { dbMock } = createVisibilityDbMock([]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(
+        service.changeForumVisibility(FORUM_ID, { visibility: 'public' }),
+      ).rejects.toThrow(NotFoundError);
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+  });
 });
