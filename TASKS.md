@@ -69,7 +69,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 
 ## Phase 5 — Topics & Posts
 
-- [ ] **TASK-048** — Implement GET /topics (list with filters and pagination)
+- [x] **TASK-048** — Implement GET /topics (list with filters and pagination)
 - [ ] **TASK-049** — Implement GET /topics/:id (topic with paginated posts)
 - [ ] **TASK-050** — Implement POST /topics (create topic)
 - [ ] **TASK-051** — Implement PATCH /topics/:id (edit topic)

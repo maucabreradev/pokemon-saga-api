@@ -1,29 +1,30 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 4 complete — Forums done (TASK-047 complete, next TASK-048 Phase 5 Topics)
+**Current phase**: Phase 5 in progress — Topics (TASK-048 complete, next TASK-049 topic detail)
 
-## Verification (2026-10-16, branch fix/docs-status-hygiene-2)
+## Verification (2026-10-16, branch feature/task-048-list-topics)
 
-- `pnpm test`: 33 suites / 278 tests pass (exit 1 is the known worker force-exit teardown warning)
+- `pnpm test`: 36 suites / 295 tests pass (exit 1 is the known worker force-exit teardown warning)
 - `pnpm test:e2e`: 2 suites / 3 tests pass (health + auth rate-limit 429 path)
 - `pnpm lint`: clean (exit 0)
+- `pnpm exec tsc --noEmit`: clean (exit 0)
 - `pnpm db:generate`: No schema changes, nothing to migrate
-- Docs hygiene (State.md stale Verification/Last Completed, API.md Phase 4 status, TASK-078/079/081 rescope, AGENTS.md State.md filename) fixed on `fix/docs-status-hygiene-2`
 
 ## Current Status
 
-Phase 4 is complete. TASK-047 (forum visibility guard) implemented as ForumsService.assertForumAccess reusable primitive: 404 on missing, 403 for guests on registered/characters_only, 403 without active character; Phase 5 topic/post endpoints must call it (wiring deferred — topics/posts modules do not exist yet). Authenticated tree filtering stays future work. 278/278 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-048 (GET /topics, Phase 5).
+Phase 5 is in progress. TASK-048 (GET /topics) implemented as TopicsService.listTopics: public guest view (public forums only, non-public forumId masked as 404 like GET /forums/:id), forumId/authorCharacterId filters, sort newest/replies/views, {data,total,page,limit,totalPages} with limit clamped to 50, joins for forumName/authorName; authenticated viewer path (userId) ready for future optional-auth wiring. 295/295 unit pass, 3/3 e2e pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-049 (GET /topics/:id, Phase 5).
 
 ## Last Completed
 
+- **TASK-048** — Implement GET /topics via TopicsModule (listTopics with visibility filter, forum/author filters, 3 sort orders, pagination metadata; ListTopicsQueryDto extends PaginationQueryDto with limit max 50); 295/295 unit, 3/3 e2e, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-047** — Implement forum visibility guard: ForumsService.assertForumAccess reusable primitive (404 missing, 403 guest on registered/characters_only, 403 without active character; Phase 5 wiring deferred); 278/278 unit, lint + tsc clean, no migration. Phase 4 complete.
-- **TASK-046** — Implement PATCH /forums/:id/order via reorderForum (staff @Roles admin+webmaster, clamped position + sibling renumber in tx, 404 missing); 271/271 unit, lint + tsc clean, no migration.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-048 | GET /topics via TopicsService.listTopics (guest public-only + 404 mask, forum/author filters, 3 sorts, pagination metadata, limit 50); 295/295 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-047 | assertForumAccess primitive (404 missing, 403 guest/charless, Phase 5 wiring deferred); 278/278 unit, lint + tsc clean, no migration — Phase 4 complete |
 | 2026-10-16 | TASK-046 | PATCH /forums/:id/order via reorderForum (staff @Roles admin+webmaster, clamped position + sibling renumber in tx, 404 missing); 271/271 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-045 | DELETE /forums/:id via deleteForum (staff @Roles admin+webmaster, 409 on active topics/sub-forums, 204 void); 262/262 unit, lint + tsc clean, no migration |
