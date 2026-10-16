@@ -786,4 +786,102 @@ describe('ForumsService', () => {
       expect(deleteMock).not.toHaveBeenCalled();
     });
   });
+
+  describe('reorderForum', () => {
+    const FORUM_ID = 'forum-c';
+    const CATEGORY_ID = '11111111-1111-4111-8111-111111111111';
+
+    function siblingRow(id: string, displayOrder: number) {
+      return { id, displayOrder };
+    }
+
+    function createReorderDbMock(lookupRows: unknown[], siblingRows: unknown[]) {
+      let whereCalls = 0;
+      const selectMock = jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockImplementation(() => {
+            whereCalls++;
+            if (whereCalls === 1) {
+              return { limit: jest.fn().mockResolvedValue(lookupRows) };
+            }
+            return { orderBy: jest.fn().mockResolvedValue(siblingRows) };
+          }),
+        }),
+      }));
+      const appliedOrders: number[] = [];
+      const txUpdate = jest.fn().mockReturnValue({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        set: jest.fn((input: any) => {
+          appliedOrders.push(input.displayOrder);
+          return { where: jest.fn().mockResolvedValue(undefined) };
+        }),
+      });
+      const transactionMock = jest.fn((cb: (tx: unknown) => unknown) => cb({ update: txUpdate }));
+      return { dbMock: { select: selectMock, transaction: transactionMock }, appliedOrders };
+    }
+
+    function lookupRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: FORUM_ID,
+        categoryId: CATEGORY_ID,
+        parentForumId: null,
+        name: 'C',
+        description: null,
+        visibility: 'public',
+        displayOrder: 2,
+        ...overrides,
+      };
+    }
+
+    it('should move the forum and renumber siblings sequentially', async () => {
+      // Arrange
+      const { dbMock, appliedOrders } = createReorderDbMock(
+        [lookupRow()],
+        [siblingRow('forum-a', 0), siblingRow('forum-b', 1), siblingRow('forum-c', 2)],
+      );
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const updated = await service.reorderForum(FORUM_ID, { displayOrder: 0 });
+
+      // Assert
+      expect(updated.displayOrder).toBe(0);
+      expect(appliedOrders).toEqual([0, 1, 2]);
+    });
+
+    it('should clamp an out-of-range position to the end', async () => {
+      // Arrange
+      const { dbMock } = createReorderDbMock(
+        [lookupRow({ id: 'forum-a', displayOrder: 0 })],
+        [siblingRow('forum-a', 0), siblingRow('forum-b', 1)],
+      );
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const updated = await service.reorderForum('forum-a', { displayOrder: 99 });
+
+      // Assert
+      expect(updated.displayOrder).toBe(1);
+    });
+
+    it('should throw NotFoundError for a missing forum', async () => {
+      // Arrange
+      const { dbMock } = createReorderDbMock([], []);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(service.reorderForum(FORUM_ID, { displayOrder: 0 })).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+  });
 });
