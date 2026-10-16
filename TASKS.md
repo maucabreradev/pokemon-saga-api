@@ -58,7 +58,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 ## Phase 4 — Forums
 
 - [x] **TASK-039** — Implement GET /forums (full tree)
-- [ ] **TASK-040** — Implement GET /forums/:id (forum detail)
+- [x] **TASK-040** — Implement GET /forums/:id (forum detail)
 - [ ] **TASK-041** — Implement POST /forums/categories (admin)
 - [ ] **TASK-042** — Implement POST /forums (admin)
 - [ ] **TASK-043** — Implement PATCH /forums/:id (admin)
