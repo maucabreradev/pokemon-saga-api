@@ -35,6 +35,7 @@ describe('CharactersController', () => {
     deleteCharacter: jest.Mock;
     getCharacterTopics: jest.Mock;
     getCharacterFriends: jest.Mock;
+    getCharacterPosts: jest.Mock;
   };
 
   beforeEach(() => {
@@ -47,6 +48,7 @@ describe('CharactersController', () => {
       deleteCharacter: jest.fn(),
       getCharacterTopics: jest.fn(),
       getCharacterFriends: jest.fn(),
+      getCharacterPosts: jest.fn(),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
@@ -193,6 +195,26 @@ describe('CharactersController', () => {
 
       await expect(controller.getCharacterFriends(readableId, query)).resolves.toEqual(rows);
       expect(service.getCharacterFriends).toHaveBeenCalledWith(readableId, query);
+    });
+  });
+
+  describe('getCharacterPosts', () => {
+    it('should delegate to the service with readable id and query', async () => {
+      const readableId = 'GreenAppleHunter123';
+      const query = { page: 1, limit: 20 };
+      const rows = [
+        {
+          id: 'post-id-1',
+          topicId: 'topic-id-1',
+          topicTitle: 'Best starter?',
+          bodyPreview: 'Pikachu is the best starter...',
+          createdAt: new Date(),
+        },
+      ];
+      service.getCharacterPosts.mockResolvedValue(rows);
+
+      await expect(controller.getCharacterPosts(readableId, query)).resolves.toEqual(rows);
+      expect(service.getCharacterPosts).toHaveBeenCalledWith(readableId, query);
     });
   });
 });
