@@ -1,21 +1,22 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 3 — Users & Characters (TASK-033 complete, next TASK-034)
+**Current phase**: Phase 3 — Users & Characters (TASK-034 complete, next TASK-035)
 
 ## Current Status
 
-Phase 2 is complete. TASK-033 (PATCH /characters/:readableId/readable-id) implemented via UpdateReadableIdDto, CharactersService.changeReadableId and CharactersController.changeReadableId. Auth required; 404 missing/deleted, 403 banned/non-owner/already-renamed, 409 duplicate, 400 invalid format via DTO; same-id is idempotent no-op; sets readableIdChanged flag with explicit updatedAt. No migration (column pre-existed, db:generate clean). Next is TASK-034 (POST /characters/:readableId/set-main).
+Phase 2 is complete. TASK-034 (POST /characters/:readableId/set-main) implemented via CharactersService.setMainCharacter and CharactersController.setMainCharacter. Auth required, no body; 404 missing/deleted, 403 banned/non-owner; idempotent when already main; clears previous main and sets target in one transaction (explicit updatedAt); returns CharacterWithProfile with isMainCharacter flag; POST forced to 200 via HttpCode. No migration (db:generate clean). Next is TASK-035 (DELETE /characters/:readableId).
 
 ## Last Completed
 
-- **TASK-033** — Implement PATCH readable-id (one-time rename): DTO @Matches pattern; guard order 404→banned→owner→once→idempotent→409; DB unique backs race; 163/163 unit and 3/3 e2e pass, lint clean, no migration.
+- **TASK-034** — Implement POST set-main: guard order 404→banned→owner→idempotent; single-transaction clear+set scoped to non-deleted; 170/170 unit and 3/3 e2e pass, lint clean, no migration.
 - **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-034 | POST :readableId/set-main via setMainCharacter (404→banned→owner→idempotent, tx clear+set, returns CharacterWithProfile, 200 via HttpCode); 170/170 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-033 | PATCH :readableId/readable-id via changeReadableId (404→403→once→idempotent→409, flag+updatedAt, db:generate clean); 163/163 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-032 | PATCH /characters/:readableId via updateProfile (auth, ownership 403, banned 403, partial + upsert, returns public profile); 145/145 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-031 | GET /characters/:readableId via getPublicProfile (public, left-join profile, 404 masks banned/deleted, no user_id); 130/130 unit, 3/3 e2e, no migration |

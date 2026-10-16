@@ -49,7 +49,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-031** — Implement GET /characters/:readableId (public profile)
 - [x] **TASK-032** — Implement PATCH /characters/:readableId (edit profile)
 - [x] **TASK-033** — Implement PATCH /characters/:readableId/readable-id (one-time rename)
-- [ ] **TASK-034** — Implement POST /characters/:readableId/set-main
+- [x] **TASK-034** — Implement POST /characters/:readableId/set-main
 - [ ] **TASK-035** — Implement DELETE /characters/:readableId (soft delete)
 - [ ] **TASK-036** — Implement GET /characters/:readableId/topics
 - [ ] **TASK-037** — Implement GET /characters/:readableId/friends
