@@ -1,21 +1,22 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 3 — Users & Characters (TASK-031 complete, next TASK-032)
+**Current phase**: Phase 3 — Users & Characters (TASK-032 complete, next TASK-033)
 
 ## Current Status
 
-Phase 2 is complete. TASK-031 (GET /characters/:readableId) implemented via CharactersService.getPublicProfile and CharactersController.getByReadableId. Public endpoint (no auth) returning readableId/publicName/bio/avatarUrl/customTitle/signature/createdAt via left-join with characters_profile; banned/deleted/missing all return 404 without leaking existence; no user_id or internal id exposed. Next is TASK-032 (PATCH /characters/:readableId).
+Phase 2 is complete. TASK-032 (PATCH /characters/:readableId) implemented via UpdateCharacterDto, CharactersService.updateProfile and CharactersController.updateProfile. Auth required; verifies ownership (403 non-owner), rejects banned (403), 404 when missing/deleted; partial updates (only provided fields, explicit updatedAt), profile upsert fallback, returns public profile shape. Next is TASK-033 (PATCH /characters/:readableId/readable-id).
 
 ## Last Completed
 
-- **TASK-031** — Implement GET /characters/:readableId (public profile): service filters status=active + deletedAt IS NULL, 404 via NotFoundError; @Public() route with Swagger Ok/NotFound + ApiParam; 130/130 unit and 3/3 e2e pass, lint clean, no migration.
+- **TASK-032** — Implement PATCH /characters/:readableId (edit profile): DTO validation (name 3-32, bio 500, url avatar, title 64, signature 200); ownership + banned guards; transaction with profile upsert; 145/145 unit and 3/3 e2e pass, lint clean, no migration.
 - **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-032 | PATCH /characters/:readableId via updateProfile (auth, ownership 403, banned 403, partial + upsert, returns public profile); 145/145 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-031 | GET /characters/:readableId via getPublicProfile (public, left-join profile, 404 masks banned/deleted, no user_id); 130/130 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-029 | POST /characters via CharactersModule (max 3/user, readableId generator, profile, throttle 3/h); 126/126 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-030 | Readable ID generator (pure utils, unique-with-retry, validation); done before TASK-029 which needs it; 115/115 unit, 3/3 e2e, no migration |
