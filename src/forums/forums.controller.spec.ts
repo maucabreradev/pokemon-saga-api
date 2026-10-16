@@ -6,6 +6,11 @@ jest.mock('@nestjs/swagger', () => ({
   ApiOkResponse: () => () => undefined,
   ApiNotFoundResponse: () => () => undefined,
   ApiParam: () => () => undefined,
+  ApiBearerAuth: () => () => undefined,
+  ApiCreatedResponse: () => () => undefined,
+  ApiBadRequestResponse: () => () => undefined,
+  ApiUnauthorizedResponse: () => () => undefined,
+  ApiForbiddenResponse: () => () => undefined,
 }));
 
 jest.mock('../database/database.module', () => ({
@@ -66,6 +71,33 @@ describe('ForumsController', () => {
       // Assert
       expect(serviceMock.getForumDetail).toHaveBeenCalledWith('forum-1');
       expect(result).toBe(detail);
+    });
+  });
+
+  describe('createCategory', () => {
+    it('should return the created category from the service', async () => {
+      // Arrange
+      const dto = { name: 'General Discussion' };
+      const created = {
+        id: 'cat-new',
+        name: 'General Discussion',
+        description: null,
+        visibility: 'public',
+        displayOrder: 0,
+        forums: [],
+      };
+      const serviceMock = { createCategory: jest.fn().mockResolvedValue(created) };
+      const controller = new ForumsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.createCategory(dto);
+
+      // Assert
+      expect(serviceMock.createCategory).toHaveBeenCalledWith(dto);
+      expect(result).toBe(created);
     });
   });
 });

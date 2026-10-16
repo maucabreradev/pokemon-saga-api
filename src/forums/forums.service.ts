@@ -1,10 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { NotFoundError } from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { categories } from '../database/schema/categories';
 import { forums } from '../database/schema/forums';
 import { topics } from '../database/schema/topics';
+import { CreateCategoryDto } from './dto/create-category.dto';
 
 export interface ForumTreeNode {
   id: string;
@@ -191,5 +192,35 @@ export class ForumsService {
       breadcrumb,
       topicCount: topicRows.length,
     };
+  }
+
+  async createCategory(dto: CreateCategoryDto): Promise<CategoryTreeNode> {
+    const [top] = await this.db
+      .select({ displayOrder: categories.displayOrder })
+      .from(categories)
+      .orderBy(desc(categories.displayOrder))
+      .limit(1);
+
+    const now = new Date();
+
+    const [created] = await this.db
+      .insert(categories)
+      .values({
+        name: dto.name,
+        description: dto.description ?? null,
+        visibility: dto.visibility ?? 'public',
+        displayOrder: (top?.displayOrder ?? -1) + 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({
+        id: categories.id,
+        name: categories.name,
+        description: categories.description,
+        visibility: categories.visibility,
+        displayOrder: categories.displayOrder,
+      });
+
+    return { ...created, forums: [] };
   }
 }

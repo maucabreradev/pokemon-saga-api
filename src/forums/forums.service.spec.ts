@@ -327,4 +327,84 @@ describe('ForumsService', () => {
       expect(detail.topicCount).toBe(0);
     });
   });
+
+  describe('createCategory', () => {
+    function createInsertDbMock(maxRows: { displayOrder: number }[]) {
+      const selectMock = jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          orderBy: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(maxRows),
+          }),
+        }),
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const valuesMock = jest.fn((input: any) => ({
+        returning: jest.fn().mockResolvedValue([{ id: 'cat-new', ...input }]),
+      }));
+      const insertMock = jest.fn().mockReturnValue({ values: valuesMock });
+      return { dbMock: { select: selectMock, insert: insertMock }, valuesMock };
+    }
+
+    it('should create a category with displayOrder one above the current max', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createInsertDbMock([{ displayOrder: 2 }]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const created = await service.createCategory({
+        name: 'General Discussion',
+        description: 'Talk about anything',
+        visibility: 'public',
+      });
+
+      // Assert
+      expect(valuesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'General Discussion',
+          description: 'Talk about anything',
+          visibility: 'public',
+          displayOrder: 3,
+        }),
+      );
+      expect(created.id).toBe('cat-new');
+      expect(created.displayOrder).toBe(3);
+      expect(created.forums).toEqual([]);
+    });
+
+    it('should start at displayOrder 0 when no categories exist', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createInsertDbMock([]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const created = await service.createCategory({ name: 'First Category' });
+
+      // Assert
+      expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({ displayOrder: 0 }));
+      expect(created.displayOrder).toBe(0);
+    });
+
+    it('should default visibility to public and description to null', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createInsertDbMock([]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      await service.createCategory({ name: 'General Discussion' });
+
+      // Assert
+      expect(valuesMock).toHaveBeenCalledWith(
+        expect.objectContaining({ visibility: 'public', description: null }),
+      );
+    });
+  });
 });
