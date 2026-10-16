@@ -140,4 +140,24 @@ describe('ForumsController', () => {
       expect(result).toBe(updated);
     });
   });
+
+  describe('changeForumVisibility', () => {
+    it('should return the updated forum from the service', async () => {
+      // Arrange
+      const dto = { visibility: 'registered' as const };
+      const updated = { id: 'forum-1', visibility: 'registered' };
+      const serviceMock = { changeForumVisibility: jest.fn().mockResolvedValue(updated) };
+      const controller = new ForumsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.changeForumVisibility('forum-1', dto);
+
+      // Assert
+      expect(serviceMock.changeForumVisibility).toHaveBeenCalledWith('forum-1', dto);
+      expect(result).toBe(updated);
+    });
+  });
 });
