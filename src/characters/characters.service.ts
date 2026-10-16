@@ -226,6 +226,76 @@ export class CharactersService {
     return profile;
   }
 
+  async setMainCharacter(userId: string, readableId: string): Promise<CharacterWithProfile> {
+    const [character] = await this.db
+      .select({
+        id: characters.id,
+        userId: characters.userId,
+        status: characters.status,
+        isMainCharacter: characters.isMainCharacter,
+      })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.readableId, readableId),
+          ne(characters.status, 'deleted'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!character) {
+      throw new NotFoundError('Character', readableId);
+    }
+
+    if (character.status === 'banned') {
+      throw new ForbiddenError('Banned characters cannot be set as main');
+    }
+
+    if (character.userId !== userId) {
+      throw new ForbiddenError('You do not own this character');
+    }
+
+    const now = new Date();
+
+    if (!character.isMainCharacter) {
+      await this.db.transaction(async (tx) => {
+        await tx
+          .update(characters)
+          .set({ isMainCharacter: false, updatedAt: now })
+          .where(
+            and(
+              eq(characters.userId, userId),
+              ne(characters.status, 'deleted'),
+              isNull(characters.deletedAt),
+            ),
+          );
+
+        await tx
+          .update(characters)
+          .set({ isMainCharacter: true, updatedAt: now })
+          .where(eq(characters.id, character.id));
+      });
+    }
+
+    const [updated] = await this.db
+      .select({
+        id: characters.id,
+        readableId: characters.readableId,
+        publicName: characters.publicName,
+        status: characters.status,
+        isMainCharacter: characters.isMainCharacter,
+        bio: charactersProfile.bio,
+        createdAt: characters.createdAt,
+      })
+      .from(characters)
+      .leftJoin(charactersProfile, eq(charactersProfile.characterId, characters.id))
+      .where(eq(characters.id, character.id))
+      .limit(1);
+
+    return updated;
+  }
+
   async create(userId: string, dto: CreateCharacterDto): Promise<CharacterWithProfile> {
     const [user] = await this.db
       .select({ id: users.id })

@@ -134,4 +134,33 @@ export class CharactersController {
   ) {
     return this.charactersService.changeReadableId(userId, readableId, dto);
   }
+
+  @Post(':readableId/set-main')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Set character as main character' })
+  @ApiParam({ name: 'readableId', example: 'GreenAppleHunter123' })
+  @ApiOkResponse({
+    description: 'Character set as main character',
+    schema: {
+      example: {
+        id: '22222222-2222-4222-8222-222222222222',
+        readableId: 'GreenAppleHunter123',
+        publicName: 'Pikachu',
+        status: 'active',
+        isMainCharacter: true,
+        bio: 'Electric mouse Pokemon',
+        createdAt: '2026-10-15T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Not the owner, or character is banned' })
+  @ApiNotFoundResponse({ description: 'Character not found' })
+  async setMainCharacter(
+    @Param('readableId') readableId: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.charactersService.setMainCharacter(userId, readableId);
+  }
 }
