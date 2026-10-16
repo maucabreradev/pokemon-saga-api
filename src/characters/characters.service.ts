@@ -8,6 +8,7 @@ import { characters } from '../database/schema/characters';
 import { charactersProfile } from '../database/schema/characters-profile';
 import { forums } from '../database/schema/forums';
 import { friendships } from '../database/schema/friendships';
+import { posts } from '../database/schema/posts';
 import { topics } from '../database/schema/topics';
 import { users } from '../database/schema/users';
 import { generateUniqueReadableId } from '../common/utils/readable-id-generator';
@@ -48,6 +49,16 @@ export interface CharacterFriendSummary {
   publicName: string;
   avatarUrl: string | null;
 }
+
+export interface CharacterPostSummary {
+  id: string;
+  topicId: string;
+  topicTitle: string;
+  bodyPreview: string;
+  createdAt: Date;
+}
+
+const POST_PREVIEW_LENGTH = 200;
 
 @Injectable()
 export class CharactersService {
@@ -459,6 +470,59 @@ export class CharactersService {
       .sort((a, b) => b.friendshipCreatedAt.getTime() - a.friendshipCreatedAt.getTime())
       .slice((page - 1) * limit, page * limit)
       .map(({ readableId, publicName, avatarUrl }) => ({ readableId, publicName, avatarUrl }));
+  }
+
+  async getCharacterPosts(
+    readableId: string,
+    query: PaginationQueryDto,
+  ): Promise<CharacterPostSummary[]> {
+    const [character] = await this.db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.readableId, readableId),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!character) {
+      throw new NotFoundError('Character', readableId);
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const rows = await this.db
+      .select({
+        id: posts.id,
+        topicId: posts.topicId,
+        topicTitle: topics.title,
+        body: posts.body,
+        createdAt: posts.createdAt,
+      })
+      .from(posts)
+      .innerJoin(topics, eq(posts.topicId, topics.id))
+      .where(
+        and(
+          eq(posts.authorCharacterId, character.id),
+          eq(posts.isDeleted, false),
+          isNull(posts.deletedAt),
+          eq(topics.isDeleted, false),
+          isNull(topics.deletedAt),
+        ),
+      )
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    return rows.map(({ body, ...rest }) => ({
+      ...rest,
+      bodyPreview:
+        body.length > POST_PREVIEW_LENGTH ? `${body.slice(0, POST_PREVIEW_LENGTH)}...` : body,
+    }));
   }
 
   async create(userId: string, dto: CreateCharacterDto): Promise<CharacterWithProfile> {
