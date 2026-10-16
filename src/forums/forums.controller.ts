@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -16,6 +16,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { ForumsService } from './forums.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateForumDto } from './dto/create-forum.dto';
+import { UpdateForumDto } from './dto/update-forum.dto';
 
 @ApiTags('Forums')
 @Controller('forums')
@@ -127,5 +128,32 @@ export class ForumsController {
   @ApiNotFoundResponse({ description: 'Category or parent forum not found' })
   async createForum(@Body() dto: CreateForumDto) {
     return this.forumsService.createForum(dto);
+  }
+
+  @Patch(':id')
+  @Roles('admin', 'webmaster')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update forum details' })
+  @ApiParam({ name: 'id', example: '22222222-2222-4222-8222-222222222222' })
+  @ApiOkResponse({
+    description: 'Updated forum',
+    schema: {
+      example: {
+        id: '22222222-2222-4222-8222-222222222222',
+        categoryId: '11111111-1111-4111-8111-111111111111',
+        parentForumId: null,
+        name: 'Announcements',
+        description: 'Official news',
+        visibility: 'public',
+        displayOrder: 0,
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Admin or webmaster role required' })
+  @ApiNotFoundResponse({ description: 'Forum not found' })
+  async updateForum(@Param('id') id: string, @Body() dto: UpdateForumDto) {
+    return this.forumsService.updateForum(id, dto);
   }
 }
