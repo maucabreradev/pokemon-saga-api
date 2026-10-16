@@ -1,7 +1,7 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 4 in progress — Forums (TASK-046 complete, next TASK-047 visibility guard)
+**Current phase**: Phase 4 complete — Forums done (TASK-047 complete, next TASK-048 Phase 5 Topics)
 
 ## Verification (2026-10-16, branch develop)
 
@@ -13,7 +13,7 @@
 
 ## Current Status
 
-Phase 4 is in progress. TASK-046 (PATCH /forums/:id/order) implemented via ForumsService.reorderForum and ForumsController.reorderForum. Staff-only via @Roles('admin', 'webmaster'); moves forum to clamped position and renumbers siblings 0..n in one transaction, 404 when missing; 271/271 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-047 (forum visibility guard).
+Phase 4 is complete. TASK-047 (forum visibility guard) implemented as ForumsService.assertForumAccess reusable primitive: 404 on missing, 403 for guests on registered/characters_only, 403 without active character; Phase 5 topic/post endpoints must call it (wiring deferred — topics/posts modules do not exist yet). Authenticated tree filtering stays future work. 278/278 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-048 (GET /topics, Phase 5).
 
 ## Last Completed
 
@@ -24,6 +24,7 @@ Phase 4 is in progress. TASK-046 (PATCH /forums/:id/order) implemented via Forum
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-047 | assertForumAccess primitive (404 missing, 403 guest/charless, Phase 5 wiring deferred); 278/278 unit, lint + tsc clean, no migration — Phase 4 complete |
 | 2026-10-16 | TASK-046 | PATCH /forums/:id/order via reorderForum (staff @Roles admin+webmaster, clamped position + sibling renumber in tx, 404 missing); 271/271 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-045 | DELETE /forums/:id via deleteForum (staff @Roles admin+webmaster, 409 on active topics/sub-forums, 204 void); 262/262 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-044 | PATCH /forums/:id/visibility via changeForumVisibility (staff @Roles admin+webmaster, required enum DTO, 404 missing); 257/257 unit, lint + tsc clean, no migration |
