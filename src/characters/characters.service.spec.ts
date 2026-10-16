@@ -1,10 +1,7 @@
 import { ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
+import { characters } from '../database/schema/characters';
+import { charactersProfile } from '../database/schema/characters-profile';
 import { CharactersService } from './characters.service';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const characters = {} as any;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const charactersProfile = {} as any;
 
 jest.mock('drizzle-orm', () => {
   const actual = jest.requireActual('drizzle-orm');
@@ -19,56 +16,78 @@ jest.mock('../common/utils/readable-id-generator', () => ({
   generateUniqueReadableId: jest.fn(),
 }));
 
-function makeInsertMock(returningValue: unknown) {
-  return {
+function createDbMock(userRows: unknown[] = [], countRows: unknown[] = []) {
+  let selectCalls = 0;
+
+  const selectMock = jest.fn().mockImplementation(() => {
+    selectCalls++;
+
+    if (selectCalls === 1) {
+      // User lookup: select().from().where().limit(1)
+      return {
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(userRows),
+          }),
+        }),
+      };
+    }
+
+    // Character count: select().from().where() awaited directly (no .limit())
+    return {
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          then: (resolve: (value: unknown) => void) => {
+            resolve(countRows);
+          },
+        }),
+      }),
+    };
+  });
+
+  const charInsert = {
+    // Echo the service inputs so tests assert real service behavior, not mock data.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    values: jest.fn((input: any) => ({
+      returning: jest.fn().mockResolvedValue([
+        {
+          id: 'new-char-id',
+          readableId: input.readableId,
+          publicName: input.publicName,
+          status: input.status,
+          isMainCharacter: input.isMainCharacter,
+          createdAt: input.createdAt,
+        },
+      ]),
+    })),
+  };
+  const profileInsert = {
     values: jest.fn().mockReturnValue({
-      returning: jest.fn().mockResolvedValue(returningValue),
+      returning: jest.fn().mockResolvedValue([{ characterId: 'new-char-id' }]),
     }),
   };
-}
 
-function createDbMock(userRows: unknown[] = [], countRows: unknown[] = []) {
-  const limitMock = jest.fn().mockResolvedValueOnce(userRows).mockResolvedValueOnce(countRows);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const txInsert = jest.fn((table: any) => {
+    if (table === characters) return charInsert;
+    if (table === charactersProfile) return profileInsert;
+    return charInsert;
+  });
 
-  const charReturning = [
-    {
-      id: 'new-char-id',
-      readableId: 'GreenAppleHunter123',
-      publicName: 'Pikachu',
-      status: 'active',
-      isMainCharacter: true,
-      createdAt: new Date(),
-    },
-  ];
-
-  const insertMock = makeInsertMock(charReturning);
-
-  const txInsert = jest.fn((_table: any) => insertMock);
-
-  const txUpdate = jest.fn((_table: any) => ({
-    set: jest.fn().mockReturnValue({ where: jest.fn() }),
-  }));
-
-  const _transactionMock = jest.fn((cb: (tx: unknown) => unknown) =>
-    cb({ insert: txInsert, update: txUpdate }),
-  );
+  const transactionMock = jest.fn((cb: (tx: unknown) => unknown) => cb({ insert: txInsert }));
 
   return {
     dbMock: {
-      select: jest.fn().mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnValue({ limit: limitMock }),
-        }),
-      }),
-      transaction: _transactionMock,
+      select: selectMock,
+      transaction: transactionMock,
     },
-    limitMock,
-    _transactionMock,
+    transactionMock,
     txInsert,
   };
 }
 
 function createService(dbMock: unknown) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new CharactersService(dbMock as any);
 }
 
@@ -82,8 +101,8 @@ describe('CharactersService', () => {
     const userRow = { id: userId, deletedAt: null };
     const dto = { publicName: 'Pikachu', bio: 'Electric mouse' };
 
-    it('should create character with profile, generate readableId, set isMainCharacter=true for first character', async () => {
-      const { dbMock, _transactionMock, txInsert } = createDbMock([userRow], []);
+    it('should create the character and its profile in one transaction, first is main', async () => {
+      const { dbMock, transactionMock, txInsert } = createDbMock([userRow], []);
       const service = createService(dbMock);
 
       const { generateUniqueReadableId } = jest.requireMock(
@@ -102,12 +121,11 @@ describe('CharactersService', () => {
         bio: dto.bio,
         createdAt: expect.any(Date),
       });
-
-      expect(_transactionMock).toHaveBeenCalled();
+      expect(transactionMock).toHaveBeenCalledTimes(1);
       expect(txInsert).toHaveBeenCalledTimes(2);
     });
 
-    it('should set isMainCharacter=false when user already has characters', async () => {
+    it('should set isMainCharacter=false when the user already has characters', async () => {
       const { dbMock } = createDbMock([userRow], [{ id: 'char1' }]);
       const service = createService(dbMock);
 
@@ -121,14 +139,14 @@ describe('CharactersService', () => {
       expect(result.isMainCharacter).toBe(false);
     });
 
-    it('should throw NotFoundError when user does not exist', async () => {
+    it('should throw NotFoundError when the user does not exist', async () => {
       const { dbMock } = createDbMock([]);
       const service = createService(dbMock);
 
       await expect(service.create(userId, dto)).rejects.toBeInstanceOf(NotFoundError);
     });
 
-    it('should throw ForbiddenError when user already has 3 active characters', async () => {
+    it('should throw ForbiddenError when the user already has 3 active characters', async () => {
       const threeChars = [{ id: '1' }, { id: '2' }, { id: '3' }];
       const { dbMock } = createDbMock([userRow], threeChars);
       const service = createService(dbMock);
@@ -136,20 +154,19 @@ describe('CharactersService', () => {
       await expect(service.create(userId, dto)).rejects.toBeInstanceOf(ForbiddenError);
     });
 
-    it('should retry readableId generation on collision', async () => {
+    it('should use the readableId from the generator', async () => {
       const { dbMock } = createDbMock([userRow], []);
       const service = createService(dbMock);
 
       const { generateUniqueReadableId } = jest.requireMock(
         '../common/utils/readable-id-generator',
       );
-      generateUniqueReadableId
-        .mockResolvedValueOnce('collision-id')
-        .mockResolvedValueOnce('FinalUniqueId789');
+      generateUniqueReadableId.mockResolvedValue('FinalUniqueId789');
 
       const result = await service.create(userId, dto);
 
       expect(result.readableId).toBe('FinalUniqueId789');
+      expect(generateUniqueReadableId).toHaveBeenCalledTimes(1);
     });
   });
 });
