@@ -1,7 +1,7 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 4 in progress — Forums (TASK-044 complete, next TASK-045 delete forum)
+**Current phase**: Phase 4 in progress — Forums (TASK-045 complete, next TASK-046 reorder)
 
 ## Verification (2026-10-16, branch develop)
 
@@ -13,7 +13,7 @@
 
 ## Current Status
 
-Phase 4 is in progress. TASK-044 (PATCH /forums/:id/visibility) implemented via ForumsService.changeForumVisibility and ForumsController.changeForumVisibility. Staff-only via @Roles('admin', 'webmaster'); visibility lookup unfiltered with 404 when missing; 257/257 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-045 (DELETE /forums/:id admin).
+Phase 4 is in progress. TASK-045 (DELETE /forums/:id) implemented via ForumsService.deleteForum and ForumsController.deleteForum. Staff-only via @Roles('admin', 'webmaster'); hard delete guarded by 409 on active topics or sub-forums (no migration, cascade never reached with content); idempotent 204 void; 262/262 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-046 (PATCH /forums/:id/order admin).
 
 ## Last Completed
 
@@ -24,6 +24,7 @@ Phase 4 is in progress. TASK-044 (PATCH /forums/:id/visibility) implemented via 
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-045 | DELETE /forums/:id via deleteForum (staff @Roles admin+webmaster, 409 on active topics/sub-forums, 204 void); 262/262 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-044 | PATCH /forums/:id/visibility via changeForumVisibility (staff @Roles admin+webmaster, required enum DTO, 404 missing); 257/257 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-043 | PATCH /forums/:id via updateForum (staff @Roles admin+webmaster, partial name/description, no-op returns current, 404 missing); 249/249 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-042 | POST /forums via createForum (staff @Roles admin+webmaster, 404 missing/cross-category refs, sibling displayOrder max+1, shared visibility enum); 238/238 unit, lint + tsc clean, no migration |

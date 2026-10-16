@@ -1,4 +1,4 @@
-import { NotFoundError } from '../common/exceptions/app-errors';
+import { ConflictError, NotFoundError } from '../common/exceptions/app-errors';
 import { ForumsService } from './forums.service';
 
 jest.mock('../database/database.module', () => ({
@@ -707,6 +707,83 @@ describe('ForumsService', () => {
         service.changeForumVisibility(FORUM_ID, { visibility: 'public' }),
       ).rejects.toThrow(NotFoundError);
       expect(dbMock.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteForum', () => {
+    const FORUM_ID = '22222222-2222-4222-8222-222222222222';
+
+    function createDeleteDbMock(queues: unknown[][]) {
+      let calls = 0;
+      const selectMock = jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockImplementation(() => Promise.resolve(queues[calls++])),
+          }),
+        }),
+      }));
+      const whereMock = jest.fn().mockResolvedValue(undefined);
+      const deleteMock = jest.fn().mockReturnValue({ where: whereMock });
+      return { dbMock: { select: selectMock, delete: deleteMock }, deleteMock };
+    }
+
+    it('should delete a forum with no active topics or sub-forums', async () => {
+      // Arrange
+      const { dbMock, deleteMock } = createDeleteDbMock([[{ id: FORUM_ID }], [], []]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const result = await service.deleteForum(FORUM_ID);
+
+      // Assert
+      expect(deleteMock).toHaveBeenCalledTimes(1);
+      expect(result).toBeUndefined();
+    });
+
+    it('should throw NotFoundError for a missing forum', async () => {
+      // Arrange
+      const { dbMock, deleteMock } = createDeleteDbMock([[]]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(service.deleteForum(FORUM_ID)).rejects.toThrow(NotFoundError);
+      expect(deleteMock).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictError when the forum has active topics', async () => {
+      // Arrange
+      const { dbMock, deleteMock } = createDeleteDbMock([[{ id: FORUM_ID }], [{ id: 'topic-1' }]]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(service.deleteForum(FORUM_ID)).rejects.toThrow(ConflictError);
+      expect(deleteMock).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictError when the forum has sub-forums', async () => {
+      // Arrange
+      const { dbMock, deleteMock } = createDeleteDbMock([
+        [{ id: FORUM_ID }],
+        [],
+        [{ id: 'forum-child' }],
+      ]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(service.deleteForum(FORUM_ID)).rejects.toThrow(ConflictError);
+      expect(deleteMock).not.toHaveBeenCalled();
     });
   });
 });
