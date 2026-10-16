@@ -543,4 +543,104 @@ describe('ForumsService', () => {
       expect(valuesMock).not.toHaveBeenCalled();
     });
   });
+
+  describe('updateForum', () => {
+    const FORUM_ID = '22222222-2222-4222-8222-222222222222';
+
+    function forumRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: FORUM_ID,
+        categoryId: '11111111-1111-4111-8111-111111111111',
+        parentForumId: null,
+        name: 'Announcements',
+        description: null,
+        visibility: 'public',
+        displayOrder: 0,
+        ...overrides,
+      };
+    }
+
+    function createUpdateDbMock(lookupRows: unknown[]) {
+      const selectMock = jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(lookupRows),
+          }),
+        }),
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const setMock = jest.fn((input: any) => ({
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{ ...forumRow(), ...input }]),
+        }),
+      }));
+      const updateMock = jest.fn().mockReturnValue({ set: setMock });
+      return { dbMock: { select: selectMock, update: updateMock }, setMock };
+    }
+
+    it('should apply a partial name update and return the updated forum', async () => {
+      // Arrange
+      const { dbMock, setMock } = createUpdateDbMock([forumRow()]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const updated = await service.updateForum(FORUM_ID, { name: 'New Name' });
+
+      // Assert
+      expect(setMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Name' }));
+      expect(updated.name).toBe('New Name');
+      expect(updated.id).toBe(FORUM_ID);
+    });
+
+    it('should apply a description update', async () => {
+      // Arrange
+      const { dbMock, setMock } = createUpdateDbMock([forumRow()]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const updated = await service.updateForum(FORUM_ID, { description: 'Fresh news' });
+
+      // Assert
+      expect(setMock).toHaveBeenCalledWith(expect.objectContaining({ description: 'Fresh news' }));
+      expect(updated.description).toBe('Fresh news');
+    });
+
+    it('should return the current forum without updating when the dto is empty', async () => {
+      // Arrange
+      const { dbMock } = createUpdateDbMock([forumRow()]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const updated = await service.updateForum(FORUM_ID, {});
+
+      // Assert
+      expect(dbMock.update).not.toHaveBeenCalled();
+      expect(updated.id).toBe(FORUM_ID);
+      expect(updated.name).toBe('Announcements');
+    });
+
+    it('should throw NotFoundError for a missing forum', async () => {
+      // Arrange
+      const { dbMock } = createUpdateDbMock([]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(service.updateForum(FORUM_ID, { name: 'New Name' })).rejects.toThrow(
+        NotFoundError,
+      );
+      expect(dbMock.update).not.toHaveBeenCalled();
+    });
+  });
 });

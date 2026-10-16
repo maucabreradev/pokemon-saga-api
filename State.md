@@ -1,7 +1,7 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 4 in progress — Forums (TASK-042 complete, next TASK-043 update forum)
+**Current phase**: Phase 4 in progress — Forums (TASK-043 complete, next TASK-044 visibility)
 
 ## Verification (2026-10-16, branch develop)
 
@@ -13,7 +13,7 @@
 
 ## Current Status
 
-Phase 4 is in progress. TASK-042 (POST /forums) implemented via ForumsService.createForum and ForumsController.createForum. Staff-only via @Roles('admin', 'webmaster'); category must exist, parent must exist in same category (404 otherwise); sibling-scoped displayOrder max + 1; 238/238 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-043 (PATCH /forums/:id admin).
+Phase 4 is in progress. TASK-043 (PATCH /forums/:id) implemented via ForumsService.updateForum and ForumsController.updateForum. Staff-only via @Roles('admin', 'webmaster'); partial name/description updates with explicit updatedAt, no-op returns current, 404 when missing; 249/249 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-044 (PATCH /forums/:id/visibility admin).
 
 ## Last Completed
 
@@ -24,6 +24,7 @@ Phase 4 is in progress. TASK-042 (POST /forums) implemented via ForumsService.cr
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-043 | PATCH /forums/:id via updateForum (staff @Roles admin+webmaster, partial name/description, no-op returns current, 404 missing); 249/249 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-042 | POST /forums via createForum (staff @Roles admin+webmaster, 404 missing/cross-category refs, sibling displayOrder max+1, shared visibility enum); 238/238 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-041 | POST /forums/categories via createCategory (staff @Roles admin+webmaster, displayOrder max+1, CreateCategoryDto 3-64/200/enum); 226/226 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-040 | GET /forums/:id via getForumDetail (public, 404 masks non-public, children + root-first breadcrumb with cycle guard, topicCount excludes deleted); 216/216 unit, lint + tsc clean, no migration |

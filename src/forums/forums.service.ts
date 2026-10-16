@@ -7,6 +7,7 @@ import { forums } from '../database/schema/forums';
 import { topics } from '../database/schema/topics';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateForumDto } from './dto/create-forum.dto';
+import { UpdateForumDto } from './dto/update-forum.dto';
 
 export interface ForumTreeNode {
   id: string;
@@ -285,5 +286,51 @@ export class ForumsService {
       });
 
     return created;
+  }
+
+  async updateForum(id: string, dto: UpdateForumDto) {
+    const [forum] = await this.db
+      .select({
+        id: forums.id,
+        categoryId: forums.categoryId,
+        parentForumId: forums.parentForumId,
+        name: forums.name,
+        description: forums.description,
+        visibility: forums.visibility,
+        displayOrder: forums.displayOrder,
+      })
+      .from(forums)
+      .where(eq(forums.id, id))
+      .limit(1);
+
+    if (!forum) {
+      throw new NotFoundError('Forum', id);
+    }
+
+    if (dto.name === undefined && dto.description === undefined) {
+      return forum;
+    }
+
+    const now = new Date();
+
+    const [updated] = await this.db
+      .update(forums)
+      .set({
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.description !== undefined ? { description: dto.description } : {}),
+        updatedAt: now,
+      })
+      .where(eq(forums.id, id))
+      .returning({
+        id: forums.id,
+        categoryId: forums.categoryId,
+        parentForumId: forums.parentForumId,
+        name: forums.name,
+        description: forums.description,
+        visibility: forums.visibility,
+        displayOrder: forums.displayOrder,
+      });
+
+    return updated;
   }
 }
