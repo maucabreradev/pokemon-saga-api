@@ -1,8 +1,9 @@
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { FORUM_VISIBILITIES, ForumVisibility } from './forum-visibility';
 
-export const CATEGORY_VISIBILITIES = ['public', 'registered', 'characters_only'] as const;
+export const CATEGORY_VISIBILITIES = FORUM_VISIBILITIES;
 
-export type CategoryVisibility = (typeof CATEGORY_VISIBILITIES)[number];
+export type CategoryVisibility = ForumVisibility;
 
 export class CreateCategoryDto {
   @IsString()
@@ -16,6 +17,6 @@ export class CreateCategoryDto {
   description?: string;
 
   @IsOptional()
-  @IsIn([...CATEGORY_VISIBILITIES])
+  @IsIn([...FORUM_VISIBILITIES])
   visibility?: CategoryVisibility;
 }
