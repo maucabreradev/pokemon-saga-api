@@ -407,4 +407,140 @@ describe('ForumsService', () => {
       );
     });
   });
+
+  describe('createForum', () => {
+    const CATEGORY_ID = '11111111-1111-4111-8111-111111111111';
+
+    function createForumDbMock(queues: unknown[][]) {
+      let calls = 0;
+      const selectMock = jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockImplementation(() => Promise.resolve(queues[calls++])),
+            orderBy: jest.fn().mockReturnValue({
+              limit: jest.fn().mockImplementation(() => Promise.resolve(queues[calls++])),
+            }),
+          }),
+        }),
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const valuesMock = jest.fn((input: any) => ({
+        returning: jest.fn().mockResolvedValue([{ id: 'forum-new', ...input }]),
+      }));
+      const insertMock = jest.fn().mockReturnValue({ values: valuesMock });
+      return { dbMock: { select: selectMock, insert: insertMock }, valuesMock };
+    }
+
+    it('should create a top-level forum with displayOrder above the sibling max', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createForumDbMock([
+        [{ id: CATEGORY_ID }],
+        [{ displayOrder: 1 }],
+      ]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const created = await service.createForum({ categoryId: CATEGORY_ID, name: 'News' });
+
+      // Assert
+      expect(valuesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoryId: CATEGORY_ID,
+          parentForumId: null,
+          name: 'News',
+          displayOrder: 2,
+        }),
+      );
+      expect(created.id).toBe('forum-new');
+    });
+
+    it('should create a nested forum scoped to the same category', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createForumDbMock([
+        [{ id: CATEGORY_ID }],
+        [{ id: 'forum-parent', categoryId: CATEGORY_ID }],
+        [],
+      ]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act
+      const created = await service.createForum({
+        categoryId: CATEGORY_ID,
+        parentForumId: 'forum-parent',
+        name: 'Patch Notes',
+      });
+
+      // Assert
+      expect(valuesMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoryId: CATEGORY_ID,
+          parentForumId: 'forum-parent',
+          displayOrder: 0,
+        }),
+      );
+      expect(created.id).toBe('forum-new');
+    });
+
+    it('should throw NotFoundError for a missing category', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createForumDbMock([[]]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(service.createForum({ categoryId: CATEGORY_ID, name: 'News' })).rejects.toThrow(
+        NotFoundError,
+      );
+      expect(valuesMock).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError for a missing parent forum', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createForumDbMock([[{ id: CATEGORY_ID }], []]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(
+        service.createForum({
+          categoryId: CATEGORY_ID,
+          parentForumId: 'forum-ghost',
+          name: 'News',
+        }),
+      ).rejects.toThrow(NotFoundError);
+      expect(valuesMock).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when the parent belongs to another category', async () => {
+      // Arrange
+      const { dbMock, valuesMock } = createForumDbMock([
+        [{ id: CATEGORY_ID }],
+        [{ id: 'forum-other', categoryId: 'other-category' }],
+      ]);
+      const service = new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+
+      // Act + Assert
+      await expect(
+        service.createForum({
+          categoryId: CATEGORY_ID,
+          parentForumId: 'forum-other',
+          name: 'News',
+        }),
+      ).rejects.toThrow(NotFoundError);
+      expect(valuesMock).not.toHaveBeenCalled();
+    });
+  });
 });

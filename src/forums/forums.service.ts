@@ -6,6 +6,7 @@ import { categories } from '../database/schema/categories';
 import { forums } from '../database/schema/forums';
 import { topics } from '../database/schema/topics';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { CreateForumDto } from './dto/create-forum.dto';
 
 export interface ForumTreeNode {
   id: string;
@@ -222,5 +223,67 @@ export class ForumsService {
       });
 
     return { ...created, forums: [] };
+  }
+
+  async createForum(dto: CreateForumDto) {
+    const [category] = await this.db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.id, dto.categoryId))
+      .limit(1);
+
+    if (!category) {
+      throw new NotFoundError('Category', dto.categoryId);
+    }
+
+    if (dto.parentForumId !== undefined) {
+      const [parent] = await this.db
+        .select({ id: forums.id, categoryId: forums.categoryId })
+        .from(forums)
+        .where(eq(forums.id, dto.parentForumId))
+        .limit(1);
+
+      if (!parent || parent.categoryId !== dto.categoryId) {
+        throw new NotFoundError('Forum', dto.parentForumId);
+      }
+    }
+
+    const parentId = dto.parentForumId ?? null;
+    const [topSibling] = await this.db
+      .select({ displayOrder: forums.displayOrder })
+      .from(forums)
+      .where(
+        parentId === null
+          ? and(eq(forums.categoryId, dto.categoryId), isNull(forums.parentForumId))
+          : and(eq(forums.categoryId, dto.categoryId), eq(forums.parentForumId, parentId)),
+      )
+      .orderBy(desc(forums.displayOrder))
+      .limit(1);
+
+    const now = new Date();
+
+    const [created] = await this.db
+      .insert(forums)
+      .values({
+        categoryId: dto.categoryId,
+        parentForumId: parentId,
+        name: dto.name,
+        description: dto.description ?? null,
+        visibility: dto.visibility ?? 'public',
+        displayOrder: (topSibling?.displayOrder ?? -1) + 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning({
+        id: forums.id,
+        categoryId: forums.categoryId,
+        parentForumId: forums.parentForumId,
+        name: forums.name,
+        description: forums.description,
+        visibility: forums.visibility,
+        displayOrder: forums.displayOrder,
+      });
+
+    return created;
   }
 }
