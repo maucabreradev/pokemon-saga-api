@@ -1,0 +1,52 @@
+import { Controller, Get, Query } from '@nestjs/common';
+import {
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Public } from '../auth/decorators/public.decorator';
+import { ListTopicsQueryDto } from './dto/list-topics-query.dto';
+import { TopicsService } from './topics.service';
+
+@ApiTags('Topics')
+@Controller('topics')
+export class TopicsController {
+  constructor(private readonly topicsService: TopicsService) {}
+
+  @Get()
+  @Public()
+  @ApiOperation({ summary: 'List topics with filters and pagination' })
+  @ApiOkResponse({
+    description: 'Paginated topic list, public forums only for guests',
+    schema: {
+      example: {
+        data: [
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            title: 'Best starter?',
+            forumId: '22222222-2222-4222-8222-222222222222',
+            forumName: 'General Discussion',
+            authorCharacterId: '44444444-4444-4434-8444-444444444444',
+            authorName: 'Ash',
+            replyCount: 5,
+            viewCount: 10,
+            isPinned: false,
+            isLocked: false,
+            createdAt: '2026-10-15T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Forum not found' })
+  @ApiForbiddenResponse({ description: 'No permission to view this forum' })
+  async listTopics(@Query() query: ListTopicsQueryDto) {
+    return this.topicsService.listTopics(query);
+  }
+}
