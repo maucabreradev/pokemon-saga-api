@@ -14,6 +14,7 @@ jest.mock('@nestjs/swagger', () => ({
   ApiUnauthorizedResponse: () => () => undefined,
   ApiForbiddenResponse: () => () => undefined,
   ApiConflictResponse: () => () => undefined,
+  ApiNoContentResponse: () => () => undefined,
   ApiBearerAuth: () => () => undefined,
   ApiParam: () => () => undefined,
 }));
@@ -30,6 +31,7 @@ describe('CharactersController', () => {
     updateProfile: jest.Mock;
     changeReadableId: jest.Mock;
     setMainCharacter: jest.Mock;
+    deleteCharacter: jest.Mock;
   };
 
   beforeEach(() => {
@@ -39,6 +41,7 @@ describe('CharactersController', () => {
       updateProfile: jest.fn(),
       changeReadableId: jest.fn(),
       setMainCharacter: jest.fn(),
+      deleteCharacter: jest.fn(),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
@@ -142,6 +145,17 @@ describe('CharactersController', () => {
 
       await expect(controller.setMainCharacter(readableId, userId)).resolves.toEqual(updated);
       expect(service.setMainCharacter).toHaveBeenCalledWith(userId, readableId);
+    });
+  });
+
+  describe('deleteCharacter', () => {
+    it('should delegate to the service with user id, role and readable id', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
+      const readableId = 'GreenAppleHunter123';
+      service.deleteCharacter.mockResolvedValue(undefined);
+
+      await expect(controller.deleteCharacter(readableId, userId, 'user')).resolves.toBeUndefined();
+      expect(service.deleteCharacter).toHaveBeenCalledWith(userId, 'user', readableId);
     });
   });
 });

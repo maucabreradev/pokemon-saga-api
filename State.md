@@ -1,21 +1,22 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 3 — Users & Characters (TASK-034 complete, next TASK-035)
+**Current phase**: Phase 3 — Users & Characters (TASK-035 complete, next TASK-036)
 
 ## Current Status
 
-Phase 2 is complete. TASK-034 (POST /characters/:readableId/set-main) implemented via CharactersService.setMainCharacter and CharactersController.setMainCharacter. Auth required, no body; 404 missing/deleted, 403 banned/non-owner; idempotent when already main; clears previous main and sets target in one transaction (explicit updatedAt); returns CharacterWithProfile with isMainCharacter flag; POST forced to 200 via HttpCode. No migration (db:generate clean). Next is TASK-035 (DELETE /characters/:readableId).
+Phase 2 is complete. TASK-035 (DELETE /characters/:readableId) implemented via CharactersService.deleteCharacter and CharactersController.deleteCharacter. Auth required, no body; lookup without deleted filter to tell 404 from idempotent 204; owner or admin/webmaster (role from JWT via @CurrentUser('role')); banned deletable; sets status deleted + deletedAt + explicit updatedAt; content preserved by soft delete; 204 void. No migration (db:generate clean). Next is TASK-036 (GET /characters/:readableId/topics).
 
 ## Last Completed
 
-- **TASK-034** — Implement POST set-main: guard order 404→banned→owner→idempotent; single-transaction clear+set scoped to non-deleted; 170/170 unit and 3/3 e2e pass, lint clean, no migration.
+- **TASK-035** — Implement DELETE soft delete: owner-or-staff auth in service (Roles guard can't express it); banned deletable, already-deleted idempotent 204; 178/178 unit and 3/3 e2e pass, lint clean, no migration.
 - **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-035 | DELETE :readableId via deleteCharacter (owner/admin+webmaster via JWT role, banned deletable, idempotent 204, 204 void); 178/178 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-034 | POST :readableId/set-main via setMainCharacter (404→banned→owner→idempotent, tx clear+set, returns CharacterWithProfile, 200 via HttpCode); 170/170 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-033 | PATCH :readableId/readable-id via changeReadableId (404→403→once→idempotent→409, flag+updatedAt, db:generate clean); 163/163 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-032 | PATCH /characters/:readableId via updateProfile (auth, ownership 403, banned 403, partial + upsert, returns public profile); 145/145 unit, 3/3 e2e, no migration |

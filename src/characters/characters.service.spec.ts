@@ -629,4 +629,108 @@ describe('CharactersService', () => {
       expect(transactionMock).not.toHaveBeenCalled();
     });
   });
+
+  describe('deleteCharacter', () => {
+    const readableId = 'GreenAppleHunter123';
+    const ownerId = '11111111-1111-4111-8111-111111111111';
+    const otherUserId = '99999999-9999-4999-8999-999999999999';
+    const characterRow = {
+      id: 'char-id',
+      userId: ownerId,
+      status: 'active',
+      deletedAt: null,
+    };
+
+    function createDeleteDbMock(characterRows: unknown[]) {
+      const select = jest.fn().mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue(characterRows),
+          }),
+        }),
+      });
+
+      const updateWhere = jest.fn().mockResolvedValue([]);
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+
+      return { dbMock: { select, update }, updateSet, updateWhere };
+    }
+
+    it('should soft delete the character when the requester is the owner', async () => {
+      const { dbMock, updateSet } = createDeleteDbMock([characterRow]);
+      const service = createService(dbMock);
+
+      await service.deleteCharacter(ownerId, 'user', readableId);
+
+      expect(updateSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'deleted',
+          deletedAt: expect.any(Date),
+          updatedAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it('should soft delete when the requester is an admin', async () => {
+      const { dbMock, updateSet } = createDeleteDbMock([characterRow]);
+      const service = createService(dbMock);
+
+      await service.deleteCharacter(otherUserId, 'admin', readableId);
+
+      expect(updateSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('should soft delete when the requester is a webmaster', async () => {
+      const { dbMock, updateSet } = createDeleteDbMock([characterRow]);
+      const service = createService(dbMock);
+
+      await service.deleteCharacter(otherUserId, 'webmaster', readableId);
+
+      expect(updateSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('should soft delete a banned character (delete is not interaction)', async () => {
+      const bannedRow = { ...characterRow, status: 'banned' };
+      const { dbMock, updateSet } = createDeleteDbMock([bannedRow]);
+      const service = createService(dbMock);
+
+      await service.deleteCharacter(ownerId, 'user', readableId);
+
+      expect(updateSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw NotFoundError when the character does not exist', async () => {
+      const { dbMock, updateSet } = createDeleteDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(
+        service.deleteCharacter(ownerId, 'user', 'NopeNopeNope000'),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(updateSet).not.toHaveBeenCalled();
+    });
+
+    it('should resolve without writes when the character is already deleted', async () => {
+      const deletedRow = {
+        ...characterRow,
+        status: 'deleted',
+        deletedAt: new Date('2026-10-15T00:00:00.000Z'),
+      };
+      const { dbMock, updateSet } = createDeleteDbMock([deletedRow]);
+      const service = createService(dbMock);
+
+      await expect(service.deleteCharacter(ownerId, 'user', readableId)).resolves.toBeUndefined();
+      expect(updateSet).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the requester is neither owner nor admin', async () => {
+      const { dbMock, updateSet } = createDeleteDbMock([characterRow]);
+      const service = createService(dbMock);
+
+      await expect(service.deleteCharacter(otherUserId, 'user', readableId)).rejects.toBeInstanceOf(
+        ForbiddenError,
+      );
+      expect(updateSet).not.toHaveBeenCalled();
+    });
+  });
 });

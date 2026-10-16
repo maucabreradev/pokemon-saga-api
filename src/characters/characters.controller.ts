@@ -1,10 +1,21 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -14,6 +25,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { UserRole } from '../auth/decorators/roles.decorator';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 import { UpdateReadableIdDto } from './dto/update-readable-id.dto';
@@ -162,5 +174,22 @@ export class CharactersController {
     @CurrentUser('sub') userId: string,
   ) {
     return this.charactersService.setMainCharacter(userId, readableId);
+  }
+
+  @Delete(':readableId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete character (soft delete)' })
+  @ApiParam({ name: 'readableId', example: 'GreenAppleHunter123' })
+  @ApiNoContentResponse({ description: 'Character soft deleted' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Not the owner or admin' })
+  @ApiNotFoundResponse({ description: 'Character not found' })
+  async deleteCharacter(
+    @Param('readableId') readableId: string,
+    @CurrentUser('sub') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    await this.charactersService.deleteCharacter(userId, role, readableId);
   }
 }
