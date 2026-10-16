@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError } from '../common/exceptions/app-errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
 import { ForumsService } from './forums.service';
 
 jest.mock('../database/database.module', () => ({
@@ -784,6 +784,100 @@ describe('ForumsService', () => {
       // Act + Assert
       await expect(service.deleteForum(FORUM_ID)).rejects.toThrow(ConflictError);
       expect(deleteMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('assertForumAccess', () => {
+    const FORUM_ID = '22222222-2222-4222-8222-222222222222';
+    const USER_ID = '11111111-1111-4111-8111-111111111111';
+
+    function createAccessDbMock(queues: unknown[][]) {
+      let calls = 0;
+      const selectMock = jest.fn().mockImplementation(() => ({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockImplementation(() => Promise.resolve(queues[calls++])),
+          }),
+        }),
+      }));
+      return { dbMock: { select: selectMock } };
+    }
+
+    function forumAccessRow(visibility: 'public' | 'registered' | 'characters_only') {
+      return [{ id: FORUM_ID, visibility }];
+    }
+
+    function newService(queues: unknown[][]) {
+      const { dbMock } = createAccessDbMock(queues);
+      return new ForumsService(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        dbMock as any,
+      );
+    }
+
+    it('should allow a guest on a public forum', async () => {
+      // Arrange
+      const service = newService([forumAccessRow('public')]);
+
+      // Act
+      const visibility = await service.assertForumAccess(FORUM_ID);
+
+      // Assert
+      expect(visibility).toBe('public');
+    });
+
+    it('should throw NotFoundError for a missing forum', async () => {
+      // Arrange
+      const service = newService([[]]);
+
+      // Act + Assert
+      await expect(service.assertForumAccess(FORUM_ID, USER_ID)).rejects.toThrow(NotFoundError);
+    });
+
+    it('should throw ForbiddenError for a guest on a registered forum', async () => {
+      // Arrange
+      const service = newService([forumAccessRow('registered')]);
+
+      // Act + Assert
+      await expect(service.assertForumAccess(FORUM_ID)).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should allow an authenticated user on a registered forum', async () => {
+      // Arrange
+      const service = newService([forumAccessRow('registered')]);
+
+      // Act
+      const visibility = await service.assertForumAccess(FORUM_ID, USER_ID);
+
+      // Assert
+      expect(visibility).toBe('registered');
+    });
+
+    it('should throw ForbiddenError for a guest on a characters-only forum', async () => {
+      // Arrange
+      const service = newService([forumAccessRow('characters_only')]);
+
+      // Act + Assert
+      await expect(service.assertForumAccess(FORUM_ID)).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should throw ForbiddenError for a user without an active character', async () => {
+      // Arrange
+      const service = newService([forumAccessRow('characters_only'), []]);
+
+      // Act + Assert
+      await expect(service.assertForumAccess(FORUM_ID, USER_ID)).rejects.toThrow(ForbiddenError);
+    });
+
+    it('should allow a user with an active character on a characters-only forum', async () => {
+      // Arrange
+      const service = newService([forumAccessRow('characters_only'), [{ id: 'char-1' }]]);
+
+      // Act
+      const visibility = await service.assertForumAccess(FORUM_ID, USER_ID);
+
+      // Assert
+      expect(visibility).toBe('characters_only');
     });
   });
 
