@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, isNull, ne } from 'drizzle-orm';
-import { ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { characters } from '../database/schema/characters';
 import { charactersProfile } from '../database/schema/characters-profile';
@@ -8,6 +8,7 @@ import { users } from '../database/schema/users';
 import { generateUniqueReadableId } from '../common/utils/readable-id-generator';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
+import { UpdateReadableIdDto } from './dto/update-readable-id.dto';
 
 export interface CharacterWithProfile {
   id: string;
@@ -128,6 +129,84 @@ export class CharactersService {
         }
       }
     });
+
+    const [profile] = await this.db
+      .select({
+        readableId: characters.readableId,
+        publicName: characters.publicName,
+        bio: charactersProfile.bio,
+        avatarUrl: charactersProfile.avatarUrl,
+        customTitle: charactersProfile.customTitle,
+        signature: charactersProfile.signature,
+        createdAt: characters.createdAt,
+      })
+      .from(characters)
+      .leftJoin(charactersProfile, eq(charactersProfile.characterId, characters.id))
+      .where(eq(characters.id, character.id))
+      .limit(1);
+
+    return profile;
+  }
+
+  async changeReadableId(
+    userId: string,
+    currentReadableId: string,
+    dto: UpdateReadableIdDto,
+  ): Promise<CharacterPublicProfile> {
+    const [character] = await this.db
+      .select({
+        id: characters.id,
+        userId: characters.userId,
+        readableId: characters.readableId,
+        readableIdChanged: characters.readableIdChanged,
+        status: characters.status,
+      })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.readableId, currentReadableId),
+          ne(characters.status, 'deleted'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!character) {
+      throw new NotFoundError('Character', currentReadableId);
+    }
+
+    if (character.status === 'banned') {
+      throw new ForbiddenError('Banned characters cannot be renamed');
+    }
+
+    if (character.userId !== userId) {
+      throw new ForbiddenError('You do not own this character');
+    }
+
+    if (character.readableIdChanged) {
+      throw new ForbiddenError('Readable ID can only be changed once');
+    }
+
+    if (dto.readableId === character.readableId) {
+      return this.getPublicProfile(currentReadableId);
+    }
+
+    const [taken] = await this.db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(eq(characters.readableId, dto.readableId))
+      .limit(1);
+
+    if (taken) {
+      throw new ConflictError(`Character with readable ID ${dto.readableId} already exists`);
+    }
+
+    const now = new Date();
+
+    await this.db
+      .update(characters)
+      .set({ readableId: dto.readableId, readableIdChanged: true, updatedAt: now })
+      .where(eq(characters.id, character.id));
 
     const [profile] = await this.db
       .select({
