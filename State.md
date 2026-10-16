@@ -1,29 +1,31 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 5 in progress — Topics (TASK-049 complete, next TASK-050 create topic)
+**Current phase**: Phase 5 in progress — Topics (TASK-050 complete, next TASK-051 edit topic)
 
-## Verification (2026-10-16, branch feature/task-049-topic-detail)
+## Verification (2026-10-16, branch feature/task-050-create-topic)
 
-- `pnpm test`: 36 suites / 305 tests pass (exit 1 is the known worker force-exit teardown warning)
+- `pnpm test`: 38 suites / 324 tests pass (exit 1 is the known worker force-exit teardown warning)
 - `pnpm test:e2e`: 2 suites / 3 tests pass (health + auth rate-limit 429 path)
+- `pnpm test:integration`: vacuous pass (no suites yet, config parses)
 - `pnpm lint`: clean (exit 0)
 - `pnpm exec tsc --noEmit`: clean (exit 0)
 - `pnpm db:generate`: No schema changes, nothing to migrate
 
 ## Current Status
 
-Phase 5 is in progress. TASK-049 (GET /topics/:id) implemented as TopicsService.getTopicDetail: topic lookup with forum/author joins (404 masks missing/deleted), assertForumAccess with 404 mask for guests, viewCount increment per view, flat chronological posts with parentPostId + pagination metadata. 305/305 unit pass, 3/3 e2e pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-050 (POST /topics, Phase 5).
+Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.createTopic: main-first active character authors (403 without), assertForumAccess (404/403), locked forums rejected (403), body sanitized via shared sanitizeHtml util (400 when empty after sanitize), single insert, 201 response. Sanitizer is sanitize-html (ADR-015 superseded ADR-014: the DOMPurify/jsdom chain crashed at runtime on Node 20 in CI and prod). No topic_count counter and no migration per plan (counts stay computed). Next is TASK-051 (PATCH /topics/:id, Phase 5).
 
 ## Last Completed
 
+- **TASK-050** — Implement POST /topics via createTopic (auth + active character, visibility/lock guards, DOMPurify sanitize, 201); 324/324 unit, 3/3 e2e, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-049** — Implement GET /topics/:id via getTopicDetail (visibility-checked detail, viewCount increment, paginated ASC posts); 305/305 unit, 3/3 e2e, lint + tsc clean, no migration. Phase 5 in progress.
-- **TASK-048** — Implement GET /topics via TopicsModule (listTopics with visibility filter, forum/author filters, 3 sort orders, pagination metadata; ListTopicsQueryDto extends PaginationQueryDto with limit max 50); 295/295 unit, 3/3 e2e, lint + tsc clean, no migration. Phase 5 in progress.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-050 | POST /topics via createTopic (main-first author, visibility/lock guards, sanitize-html + ADR-015); unit, e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-049 | GET /topics/:id via getTopicDetail (visibility-checked, viewCount increment, flat ASC posts + parentPostId); 305/305 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-048 | GET /topics via TopicsService.listTopics (guest public-only + 404 mask, forum/author filters, 3 sorts, pagination metadata, limit 50); 295/295 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-047 | assertForumAccess primitive (404 missing, 403 guest/charless, Phase 5 wiring deferred); 278/278 unit, lint + tsc clean, no migration — Phase 4 complete |

@@ -1,14 +1,19 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { CreateTopicDto } from './dto/create-topic.dto';
 import { ListTopicsQueryDto } from './dto/list-topics-query.dto';
 import { TopicsService } from './topics.service';
 
@@ -87,5 +92,33 @@ export class TopicsController {
   @ApiForbiddenResponse({ description: 'No permission to view this forum' })
   async getTopicDetail(@Param('id') id: string, @Query() query: PaginationQueryDto) {
     return this.topicsService.getTopicDetail(id, query);
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new topic in a forum' })
+  @ApiCreatedResponse({
+    description: 'Topic created successfully',
+    schema: {
+      example: {
+        id: '33333333-3333-4333-8333-333333333333',
+        forumId: '22222222-2222-4222-8222-222222222222',
+        authorCharacterId: '44444444-4444-4434-8444-444444444444',
+        title: 'Best starter?',
+        body: 'Which one do I pick?',
+        isPinned: false,
+        isLocked: false,
+        viewCount: 0,
+        replyCount: 0,
+        createdAt: '2026-10-16T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Active character required, forum locked or not visible' })
+  @ApiNotFoundResponse({ description: 'Forum not found' })
+  async createTopic(@Body() dto: CreateTopicDto, @CurrentUser('sub') userId: string) {
+    return this.topicsService.createTopic(dto, userId);
   }
 }

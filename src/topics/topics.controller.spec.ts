@@ -8,6 +8,9 @@ jest.mock('@nestjs/swagger', () => ({
   ApiForbiddenResponse: () => () => undefined,
   ApiParam: () => () => undefined,
   ApiQuery: () => () => undefined,
+  ApiCreatedResponse: () => () => undefined,
+  ApiBadRequestResponse: () => () => undefined,
+  ApiUnauthorizedResponse: () => () => undefined,
 }));
 
 jest.mock('../database/database.module', () => ({
@@ -59,6 +62,31 @@ describe('TopicsController', () => {
       // Assert
       expect(serviceMock.getTopicDetail).toHaveBeenCalledWith(id, query);
       expect(result).toBe(detail);
+    });
+  });
+
+  describe('createTopic', () => {
+    it('should delegate creation with dto and userId', async () => {
+      // Arrange
+      const dto = { forumId: 'forum-id-1', title: 'Best starter?', body: 'Which one?' };
+      const userId = 'user-id-1';
+      const created = { id: 'topic-id-1', ...dto };
+      const serviceMock = {
+        listTopics: jest.fn(),
+        getTopicDetail: jest.fn(),
+        createTopic: jest.fn().mockResolvedValue(created),
+      };
+      const controller = new TopicsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.createTopic(dto, userId);
+
+      // Assert
+      expect(serviceMock.createTopic).toHaveBeenCalledWith(dto, userId);
+      expect(result).toBe(created);
     });
   });
 });
