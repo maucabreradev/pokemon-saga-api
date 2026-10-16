@@ -11,6 +11,8 @@ jest.mock('@nestjs/swagger', () => ({
   ApiBadRequestResponse: () => () => undefined,
   ApiUnauthorizedResponse: () => () => undefined,
   ApiForbiddenResponse: () => () => undefined,
+  ApiNoContentResponse: () => () => undefined,
+  ApiConflictResponse: () => () => undefined,
 }));
 
 jest.mock('../database/database.module', () => ({
@@ -158,6 +160,24 @@ describe('ForumsController', () => {
       // Assert
       expect(serviceMock.changeForumVisibility).toHaveBeenCalledWith('forum-1', dto);
       expect(result).toBe(updated);
+    });
+  });
+
+  describe('deleteForum', () => {
+    it('should delegate deletion to the service and return void', async () => {
+      // Arrange
+      const serviceMock = { deleteForum: jest.fn().mockResolvedValue(undefined) };
+      const controller = new ForumsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.deleteForum('forum-1');
+
+      // Assert
+      expect(serviceMock.deleteForum).toHaveBeenCalledWith('forum-1');
+      expect(result).toBeUndefined();
     });
   });
 });

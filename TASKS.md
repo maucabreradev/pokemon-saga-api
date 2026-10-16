@@ -63,7 +63,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-042** — Implement POST /forums (admin)
 - [x] **TASK-043** — Implement PATCH /forums/:id (admin)
 - [x] **TASK-044** — Implement PATCH /forums/:id/visibility (admin)
-- [ ] **TASK-045** — Implement DELETE /forums/:id (admin)
+- [x] **TASK-045** — Implement DELETE /forums/:id (admin)
 - [ ] **TASK-046** — Implement PATCH /forums/:id/order (admin)
 - [ ] **TASK-047** — Implement forum visibility guard (public/registered/characters_only)
 
