@@ -1,21 +1,22 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 3 — Users & Characters (TASK-035 complete, next TASK-036)
+**Current phase**: Phase 3 — Users & Characters (TASK-036 complete, next TASK-037)
 
 ## Current Status
 
-Phase 2 is complete. TASK-035 (DELETE /characters/:readableId) implemented via CharactersService.deleteCharacter and CharactersController.deleteCharacter. Auth required, no body; lookup without deleted filter to tell 404 from idempotent 204; owner or admin/webmaster (role from JWT via @CurrentUser('role')); banned deletable; sets status deleted + deletedAt + explicit updatedAt; content preserved by soft delete; 204 void. No migration (db:generate clean). Next is TASK-036 (GET /characters/:readableId/topics).
+Phase 2 is complete. TASK-036 (GET /characters/:readableId/topics) implemented via shared PaginationQueryDto, CharactersService.getCharacterTopics and CharactersController.getCharacterTopics. Public endpoint; 404 for missing/deleted/banned character; topics filtered isDeleted=false + deletedAt IS NULL, joined with forums, newest-first, plain array with page/limit (defaults 1/20, max 100). No migration (db:generate clean). Next is TASK-037 (GET /characters/:readableId/friends).
 
 ## Last Completed
 
-- **TASK-035** — Implement DELETE soft delete: owner-or-staff auth in service (Roles guard can't express it); banned deletable, already-deleted idempotent 204; 178/178 unit and 3/3 e2e pass, lint clean, no migration.
+- **TASK-036** — Implement GET character topics: shared pagination DTO in common (reusable in Phase 5); forum join + double deleted filter + DESC + limit/offset; 190/190 unit and 3/3 e2e pass, lint clean, no migration.
 - **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-036 | GET :readableId/topics via getCharacterTopics (public, forum join, double deleted filter, DESC, plain array page/limit, shared PaginationQueryDto); 190/190 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-035 | DELETE :readableId via deleteCharacter (owner/admin+webmaster via JWT role, banned deletable, idempotent 204, 204 void); 178/178 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-034 | POST :readableId/set-main via setMainCharacter (404→banned→owner→idempotent, tx clear+set, returns CharacterWithProfile, 200 via HttpCode); 170/170 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-033 | PATCH :readableId/readable-id via changeReadableId (404→403→once→idempotent→409, flag+updatedAt, db:generate clean); 163/163 unit, 3/3 e2e, no migration |

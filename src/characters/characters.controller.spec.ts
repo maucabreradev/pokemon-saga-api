@@ -17,6 +17,7 @@ jest.mock('@nestjs/swagger', () => ({
   ApiNoContentResponse: () => () => undefined,
   ApiBearerAuth: () => () => undefined,
   ApiParam: () => () => undefined,
+  ApiQuery: () => () => undefined,
 }));
 
 jest.mock('../database/database.module', () => ({
@@ -32,6 +33,7 @@ describe('CharactersController', () => {
     changeReadableId: jest.Mock;
     setMainCharacter: jest.Mock;
     deleteCharacter: jest.Mock;
+    getCharacterTopics: jest.Mock;
   };
 
   beforeEach(() => {
@@ -42,6 +44,7 @@ describe('CharactersController', () => {
       changeReadableId: jest.fn(),
       setMainCharacter: jest.fn(),
       deleteCharacter: jest.fn(),
+      getCharacterTopics: jest.fn(),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
@@ -156,6 +159,26 @@ describe('CharactersController', () => {
 
       await expect(controller.deleteCharacter(readableId, userId, 'user')).resolves.toBeUndefined();
       expect(service.deleteCharacter).toHaveBeenCalledWith(userId, 'user', readableId);
+    });
+  });
+
+  describe('getCharacterTopics', () => {
+    it('should delegate to the service with readable id and query', async () => {
+      const readableId = 'GreenAppleHunter123';
+      const query = { page: 2, limit: 10 };
+      const rows = [
+        {
+          id: 'topic-id-1',
+          title: 'Best starter?',
+          forumName: 'General Discussion',
+          replyCount: 5,
+          createdAt: new Date(),
+        },
+      ];
+      service.getCharacterTopics.mockResolvedValue(rows);
+
+      await expect(controller.getCharacterTopics(readableId, query)).resolves.toEqual(rows);
+      expect(service.getCharacterTopics).toHaveBeenCalledWith(readableId, query);
     });
   });
 });

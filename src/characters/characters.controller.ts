@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -20,12 +21,14 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { UserRole } from '../auth/decorators/roles.decorator';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 import { UpdateReadableIdDto } from './dto/update-readable-id.dto';
@@ -191,5 +194,33 @@ export class CharactersController {
     @CurrentUser('role') role: UserRole,
   ) {
     await this.charactersService.deleteCharacter(userId, role, readableId);
+  }
+
+  @Get(':readableId/topics')
+  @Public()
+  @ApiOperation({ summary: "List character's topics" })
+  @ApiParam({ name: 'readableId', example: 'GreenAppleHunter123' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiOkResponse({
+    description: "Character's topics newest first",
+    schema: {
+      example: [
+        {
+          id: '55555555-5555-4555-8555-555555555555',
+          title: 'Best starter?',
+          forumName: 'General Discussion',
+          replyCount: 5,
+          createdAt: '2026-10-15T00:00:00.000Z',
+        },
+      ],
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Character not found' })
+  async getCharacterTopics(
+    @Param('readableId') readableId: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.charactersService.getCharacterTopics(readableId, query);
   }
 }

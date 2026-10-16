@@ -733,4 +733,89 @@ describe('CharactersService', () => {
       expect(updateSet).not.toHaveBeenCalled();
     });
   });
+
+  describe('getCharacterTopics', () => {
+    const readableId = 'GreenAppleHunter123';
+    const characterRow = { id: 'char-id' };
+    const topicRows = [
+      {
+        id: 'topic-id-1',
+        title: 'Best starter?',
+        forumName: 'General Discussion',
+        replyCount: 5,
+        createdAt: new Date('2026-10-15T00:00:00.000Z'),
+      },
+    ];
+
+    function createTopicsDbMock(characterRows: unknown[], rows: unknown[]) {
+      let selectCalls = 0;
+      const offset = jest.fn().mockResolvedValue(rows);
+      const limit = jest.fn().mockReturnValue({ offset });
+      const orderBy = jest.fn().mockReturnValue({ limit });
+      const topicsWhere = jest.fn().mockReturnValue({ orderBy });
+      const innerJoin = jest.fn().mockReturnValue({ where: topicsWhere });
+      const lookupWhere = jest.fn().mockReturnValue({
+        limit: jest.fn().mockResolvedValue(characterRows),
+      });
+      const select = jest.fn().mockImplementation(() => {
+        selectCalls++;
+        if (selectCalls === 1) {
+          // Character lookup: select().from().where().limit(1)
+          return { from: jest.fn().mockReturnValue({ where: lookupWhere }) };
+        }
+        // Topics query: select().from().innerJoin().where().orderBy().limit().offset()
+        return { from: jest.fn().mockReturnValue({ innerJoin }) };
+      });
+
+      return { dbMock: { select }, lookupWhere, topicsWhere, orderBy, limit, offset };
+    }
+
+    it("should return the character's topics newest first", async () => {
+      const { dbMock } = createTopicsDbMock([characterRow], topicRows);
+      const service = createService(dbMock);
+
+      const result = await service.getCharacterTopics(readableId, { page: 1, limit: 20 });
+
+      expect(result).toEqual(topicRows);
+    });
+
+    it('should apply pagination as limit and offset', async () => {
+      const { dbMock, limit, offset } = createTopicsDbMock([characterRow], []);
+      const service = createService(dbMock);
+
+      await service.getCharacterTopics(readableId, { page: 2, limit: 10 });
+
+      expect(limit).toHaveBeenCalledWith(10);
+      expect(offset).toHaveBeenCalledWith(10);
+    });
+
+    it('should return an empty array when the character has no topics', async () => {
+      const { dbMock } = createTopicsDbMock([characterRow], []);
+      const service = createService(dbMock);
+
+      await expect(service.getCharacterTopics(readableId, { page: 1, limit: 20 })).resolves.toEqual(
+        [],
+      );
+    });
+
+    it('should throw NotFoundError when the character does not exist', async () => {
+      const { dbMock } = createTopicsDbMock([], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.getCharacterTopics('NopeNopeNope000', { page: 1, limit: 20 }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('should throw NotFoundError when the character is deleted or banned (same as missing)', async () => {
+      // Non-active rows are filtered in the WHERE clause, so the db returns [].
+      const { dbMock, lookupWhere } = createTopicsDbMock([], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.getCharacterTopics(readableId, { page: 1, limit: 20 }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+      expect(lookupWhere).toHaveBeenCalledTimes(1);
+    });
+  });
 });
