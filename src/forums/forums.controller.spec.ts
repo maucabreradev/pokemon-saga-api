@@ -120,4 +120,24 @@ describe('ForumsController', () => {
       expect(result).toBe(created);
     });
   });
+
+  describe('updateForum', () => {
+    it('should return the updated forum from the service', async () => {
+      // Arrange
+      const dto = { name: 'New Name' };
+      const updated = { id: 'forum-1', name: 'New Name' };
+      const serviceMock = { updateForum: jest.fn().mockResolvedValue(updated) };
+      const controller = new ForumsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.updateForum('forum-1', dto);
+
+      // Assert
+      expect(serviceMock.updateForum).toHaveBeenCalledWith('forum-1', dto);
+      expect(result).toBe(updated);
+    });
+  });
 });
