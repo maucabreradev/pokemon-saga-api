@@ -1,21 +1,22 @@
 # Project State
 
-**Last updated**: 2026-10-15
-**Current phase**: Phase 3 — Users & Characters (TASK-029 complete, next TASK-031)
+**Last updated**: 2026-10-16
+**Current phase**: Phase 3 — Users & Characters (TASK-031 complete, next TASK-032)
 
 ## Current Status
 
-Phase 2 is complete. TASK-029 (POST /characters) implemented via CharactersModule with CharactersService.create and CharactersController.create. Enforces max 3 active characters per user (403), generates readableId via TASK-030 generator, creates profile with bio, sets first as main, returns 201 with full resource. Throttle 3 req/hour via ThrottleCharacterCreation. Next is TASK-031 (GET /characters/:readableId).
+Phase 2 is complete. TASK-031 (GET /characters/:readableId) implemented via CharactersService.getPublicProfile and CharactersController.getByReadableId. Public endpoint (no auth) returning readableId/publicName/bio/avatarUrl/customTitle/signature/createdAt via left-join with characters_profile; banned/deleted/missing all return 404 without leaking existence; no user_id or internal id exposed. Next is TASK-032 (PATCH /characters/:readableId).
 
 ## Last Completed
 
-- **TASK-029** — Implement character creation (max 3 per user): CharactersModule with service+controller; max 3 enforced (403), readableId via generator, profile with bio, first=main, 201 with full resource, throttle 3/h; 126/126 unit and 3/3 e2e pass, lint clean, no migration.
+- **TASK-031** — Implement GET /characters/:readableId (public profile): service filters status=active + deletedAt IS NULL, 404 via NotFoundError; @Public() route with Swagger Ok/NotFound + ApiParam; 130/130 unit and 3/3 e2e pass, lint clean, no migration.
 - **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-031 | GET /characters/:readableId via getPublicProfile (public, left-join profile, 404 masks banned/deleted, no user_id); 130/130 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-029 | POST /characters via CharactersModule (max 3/user, readableId generator, profile, throttle 3/h); 126/126 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-030 | Readable ID generator (pure utils, unique-with-retry, validation); done before TASK-029 which needs it; 115/115 unit, 3/3 e2e, no migration |
 | 2026-10-15 | TASK-028 | DELETE /users/me via UsersService.deleteMe (transaction: user deletedAt, revoke tokens, cascade characters; idempotent 204, generic login 401); 98/98 unit, 3/3 e2e, no migration |
