@@ -1,21 +1,22 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 3 — Users & Characters (TASK-037 complete, next TASK-038)
+**Current phase**: Phase 3 complete — Users & Characters done (TASK-038 complete, next TASK-039 Phase 4 Forums)
 
 ## Current Status
 
-Phase 2 is complete. TASK-037 (GET /characters/:readableId/friends) implemented via CharactersService.getCharacterFriends and CharactersController.getCharacterFriends. Public endpoint; 404 for missing/deleted/banned character; two indexed queries (requester + addressee side, accepted only, friend active-visible) merged newest-first with shared PaginationQueryDto slice; plain array of readableId/publicName/avatarUrl. No migration (db:generate clean). Next is TASK-038 (GET /characters/:readableId/posts).
+Phase 3 is complete. TASK-038 (GET /characters/:readableId/posts) implemented via CharactersService.getCharacterPosts and CharactersController.getCharacterPosts. Public endpoint; 404 for missing/deleted/banned character; posts filtered isDeleted=false + deletedAt IS NULL plus non-deleted topic, joined with topics, newest-first, plain array with shared PaginationQueryDto; 200-char bodyPreview + topicId included. No migration (db:generate clean). Next is TASK-039 (GET /forums tree, Phase 4).
 
 ## Last Completed
 
-- **TASK-037** — Implement GET character friends: bidirectional accepted-only queries with friend masking, in-code merge/sort/slice; 196/196 unit and 3/3 e2e pass, lint clean, no migration.
+- **TASK-038** — Implement GET character posts: topic join with double deleted filter on both sides; bodyPreview truncation; 203/203 unit and 3/3 e2e pass, lint clean, no migration. Phase 3 complete.
 - **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-038 | GET :readableId/posts via getCharacterPosts (public, topic join + double deleted filter both sides, DESC, preview 200 + topicId, plain array page/limit); 203/203 unit, 3/3 e2e, no migration — Phase 3 complete |
 | 2026-10-16 | TASK-037 | GET :readableId/friends via getCharacterFriends (public, 2 accepted-only queries, friend masking, merge newest-first + PaginationQueryDto slice); 196/196 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-036 | GET :readableId/topics via getCharacterTopics (public, forum join, double deleted filter, DESC, plain array page/limit, shared PaginationQueryDto); 190/190 unit, 3/3 e2e, no migration |
 | 2026-10-16 | TASK-035 | DELETE :readableId via deleteCharacter (owner/admin+webmaster via JWT role, banned deletable, idempotent 204, 204 void); 178/178 unit, 3/3 e2e, no migration |
