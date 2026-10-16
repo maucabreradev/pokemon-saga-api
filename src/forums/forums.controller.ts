@@ -1,5 +1,11 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param } from '@nestjs/common';
+import {
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
 import { ForumsService } from './forums.service';
 
@@ -37,5 +43,29 @@ export class ForumsController {
   })
   async getTree() {
     return this.forumsService.getTree();
+  }
+
+  @Get(':id')
+  @Public()
+  @ApiOperation({ summary: 'Get forum details with sub-forums' })
+  @ApiParam({ name: 'id', example: '22222222-2222-4222-8222-222222222222' })
+  @ApiOkResponse({
+    description: 'Forum details with immediate sub-forums, breadcrumb, and topic count',
+    schema: {
+      example: {
+        id: '22222222-2222-4222-8222-222222222222',
+        name: 'Announcements',
+        description: null,
+        visibility: 'public',
+        displayOrder: 0,
+        subForums: [],
+        breadcrumb: [{ id: '11111111-1111-4111-8111-111111111111', name: 'General' }],
+        topicCount: 5,
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Forum not found' })
+  async getForumDetail(@Param('id') id: string) {
+    return this.forumsService.getForumDetail(id);
   }
 }

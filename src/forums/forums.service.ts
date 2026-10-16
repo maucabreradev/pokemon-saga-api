@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
+import { NotFoundError } from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { categories } from '../database/schema/categories';
 import { forums } from '../database/schema/forums';
+import { topics } from '../database/schema/topics';
 
 export interface ForumTreeNode {
   id: string;
@@ -20,6 +22,22 @@ export interface CategoryTreeNode {
   visibility: 'public' | 'registered' | 'characters_only';
   displayOrder: number;
   forums: ForumTreeNode[];
+}
+
+export interface ForumBreadcrumbItem {
+  id: string;
+  name: string;
+}
+
+export interface ForumDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  visibility: 'public' | 'registered' | 'characters_only';
+  displayOrder: number;
+  subForums: ForumTreeNode[];
+  breadcrumb: ForumBreadcrumbItem[];
+  topicCount: number;
 }
 
 @Injectable()
@@ -96,5 +114,82 @@ export class ForumsService {
     }
 
     return tree;
+  }
+
+  async getForumDetail(id: string): Promise<ForumDetail> {
+    const [forum] = await this.db
+      .select({
+        id: forums.id,
+        parentForumId: forums.parentForumId,
+        name: forums.name,
+        description: forums.description,
+        visibility: forums.visibility,
+        displayOrder: forums.displayOrder,
+      })
+      .from(forums)
+      .where(and(eq(forums.id, id), eq(forums.visibility, 'public')))
+      .limit(1);
+
+    if (!forum) {
+      throw new NotFoundError('Forum', id);
+    }
+
+    const childRows = await this.db
+      .select({
+        id: forums.id,
+        name: forums.name,
+        description: forums.description,
+        visibility: forums.visibility,
+        displayOrder: forums.displayOrder,
+      })
+      .from(forums)
+      .where(and(eq(forums.parentForumId, id), eq(forums.visibility, 'public')))
+      .orderBy(asc(forums.displayOrder));
+
+    const breadcrumb: ForumBreadcrumbItem[] = [];
+    const visited = new Set<string>([forum.id]);
+    let parentId: string | null = forum.parentForumId;
+    while (parentId !== null) {
+      if (visited.has(parentId)) {
+        break;
+      }
+      visited.add(parentId);
+
+      const [parent] = await this.db
+        .select({
+          id: forums.id,
+          parentForumId: forums.parentForumId,
+          name: forums.name,
+          visibility: forums.visibility,
+        })
+        .from(forums)
+        .where(eq(forums.id, parentId))
+        .limit(1);
+
+      // Stop the trail at missing or non-public parents so the
+      // breadcrumb never leaks forums the requester cannot see.
+      if (!parent || parent.visibility !== 'public') {
+        break;
+      }
+
+      breadcrumb.unshift({ id: parent.id, name: parent.name });
+      parentId = parent.parentForumId;
+    }
+
+    const topicRows = await this.db
+      .select({ id: topics.id })
+      .from(topics)
+      .where(and(eq(topics.forumId, id), eq(topics.isDeleted, false), isNull(topics.deletedAt)));
+
+    return {
+      id: forum.id,
+      name: forum.name,
+      description: forum.description,
+      visibility: forum.visibility,
+      displayOrder: forum.displayOrder,
+      subForums: childRows.map((child) => ({ ...child, forums: [] })),
+      breadcrumb,
+      topicCount: topicRows.length,
+    };
   }
 }
