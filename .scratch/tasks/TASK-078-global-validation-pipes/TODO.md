@@ -1,17 +1,20 @@
-# TASK-078: Add request validation pipes globally
+# TASK-078: Audit global request validation pipes
 
 ## Objective
-Ensure all incoming requests are validated.
+Verify the existing global ValidationPipe (landed in TASK-008) covers all endpoints including Phase 4-7 DTOs. No greenfield setup — this is a hardening audit.
+
+## Current State
+`src/common/pipes/validation.pipe.ts` is registered globally. Do not recreate it.
 
 ## Steps
 
-1. Install class-validator, class-transformer
-2. Create global ValidationPipe in main.ts:
+1. Verify installed class-validator, class-transformer versions (no reinstall unless missing)
+2. Verify global ValidationPipe options in main.ts:
    - whitelist: true (strip unknown properties)
    - forbidNonWhitelisted: true (reject unknown properties)
    - transform: true (auto-transform types)
-3. Create custom validation decorators if needed
-4. Apply DTOs to all endpoints
+3. Create custom validation decorators only if a gap is found
+4. Apply DTOs to all endpoints added in Phase 4-7
 5. Return 400 Bad Request with detailed validation errors:
    ```json
    {

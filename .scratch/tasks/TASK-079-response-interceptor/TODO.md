@@ -1,12 +1,15 @@
-# TASK-079: Implement response transformation interceptor
+# TASK-079: Audit response transformation interceptor
 
 ## Objective
-Standardize all API responses.
+Decide response envelope before hardening. Existing `src/common/interceptors/response.interceptor.ts` (TASK-008) adds metadata (timestamp, path, duration) — it does NOT wrap in `{ data, meta }`. Adopting the envelope below is a breaking change and needs an ADR.
+
+## Current State
+Interceptor exists and is registered globally. Do not recreate it until the envelope decision is recorded.
 
 ## Steps
 
-1. Create src/common/interceptors/response.interceptor.ts
-2. Transform all responses to standard format:
+1. Verify existing interceptor file and global registration
+2. ADR decision required: keep metadata envelope vs migrate to standard format:
    ```json
    {
      "data": { ... },

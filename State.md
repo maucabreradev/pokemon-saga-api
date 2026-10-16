@@ -3,6 +3,14 @@
 **Last updated**: 2026-10-16
 **Current phase**: Phase 3 complete — Users & Characters done (TASK-038 complete, next TASK-039 Phase 4 Forums)
 
+## Verification (2026-10-16, branch develop)
+
+- `pnpm test`: 26 suites / 203 tests pass (worker teardown warning only, exit 1 on force-exit)
+- `pnpm test:e2e`: 2 suites / 3 tests pass (health + auth rate-limit 429 path)
+- `eslint src/**/*.ts tests/**/*.ts`: clean
+- `pnpm db:generate`: No schema changes, nothing to migrate
+- Docs hygiene (State.md stale line, API.md status, TASK-078/079/081 TODO rescope) fixed on `feature/docs-status-hygiene`
+
 ## Current Status
 
 Phase 3 is complete. TASK-038 (GET /characters/:readableId/posts) implemented via CharactersService.getCharacterPosts and CharactersController.getCharacterPosts. Public endpoint; 404 for missing/deleted/banned character; posts filtered isDeleted=false + deletedAt IS NULL plus non-deleted topic, joined with topics, newest-first, plain array with shared PaginationQueryDto; 200-char bodyPreview + topicId included. No migration (db:generate clean). Next is TASK-039 (GET /forums tree, Phase 4).
@@ -82,7 +90,6 @@ Phase 3 is complete. TASK-038 (GET /characters/:readableId/posts) implemented vi
 - Rate limiting is now enforced: ThrottlerGuard registered as global APP_GUARD (default 100 req/min); use @ThrottleAuth() (5 req/min) on auth endpoints in Phase 2
 - Docker fixed: HEALTHCHECK hits /api/v1/health; tsconfig.build.json gives flat dist output (no specs) so CMD node dist/main works
 - Health check at `/api/v1/health` returns `{ status, timestamp, uptime }` via `HealthService`; controller delegates through DI
-- Next: TASK-029 - Implement character creation (max 3 per user, uses TASK-030 generator)
 - Users module: `UsersService.getMe` selects only id/email/role/createdAt, throws NotFoundError (404) when missing; `GET /users/me` uses `@CurrentUser('sub')`, Bearer required, documented under `Users` tag
 - Users email update: `UpdateUserDto` validates format (400 via global pipe); `updateEmail` returns current profile idempotently on same email, 409 via ConflictError when taken, explicit `updatedAt: new Date()` per DB.md timestamp convention
 - Users password change: `ChangePasswordDto` (min 8, max 64); `changePassword` verifies current (401), rejects same-as-current (400), bcrypt 12 re-hash, explicit `updatedAt`, revokes all refresh tokens, 204 No Content

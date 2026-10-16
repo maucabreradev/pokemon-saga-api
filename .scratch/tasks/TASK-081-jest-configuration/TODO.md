@@ -1,22 +1,22 @@
-# TASK-081: Set up Jest configuration and test environment
+# TASK-081: Stabilize Jest test environment for Phase 9 pyramid
 
 ## Objective
-Configure Jest for unit, integration, and e2e testing.
+Base Jest setup already landed via FIX-002/003 (configs, babel ESM transform, swagger stub). This task verifies the environment is ready for the Phase 9 pyramid (TASK-082-089) and closes the test-DB isolation gap.
+
+## Current State
+- `jest.config.js`, `tests/jest-e2e.json`, `tests/jest-integration.json` exist.
+- `pnpm test` runs colocated unit specs; `pnpm test:e2e` boots real AppModule.
+- `pnpm test:integration` is vacuous until Phase 9; no isolated test database yet.
 
 ## Steps
 
-1. Install jest, ts-jest, @types/jest, supertest, @types/supertest
-2. Create jest.config.js:
-   - preset: ts-jest
-   - testEnvironment: node
-   - coverageDirectory: coverage
-   - collectCoverageFrom: src/**/*.ts
-3. Create separate configs:
-   - jest.unit.config.js — unit tests (src/**/*.spec.ts)
-   - jest.integration.config.js — integration tests (tests/integration/*.spec.ts)
-   - jest.e2e.config.js — e2e tests (tests/e2e/*.spec.ts)
-4. Add test scripts to package.json:
-   - test, test:unit, test:integration, test:e2e, test:cov, test:watch
+1. Verify installed jest, ts-jest, @types/jest, supertest, @types/supertest versions (no reinstall unless missing)
+2. Verify existing configs:
+   - jest unit (src/**/*.spec.ts)
+   - jest integration (tests/integration)
+   - jest e2e (tests/e2e) with babel CommonJS transform + swagger stub
+3. Verify test scripts in package.json:
+   - test, test:integration, test:e2e, test:cov, test:watch
 5. Create tests/setup.ts for global test setup
 6. Create tests/teardown.ts for cleanup
 7. Verify all test commands work

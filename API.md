@@ -2,6 +2,11 @@
 
 All endpoints are prefixed with `/api/v1`. Interactive documentation is available via Swagger at `/api/docs`.
 
+## Implementation Status
+
+- Implemented: Auth, Users, Characters, Health (Phase 1-3).
+- Planned (spec only, not yet implemented): Forums, Topics, Posts, Friendships, Reactions, Moderation, Admin (Phase 4+). Swagger UI reflects only implemented routes.
+
 ## Authentication
 
 All protected endpoints require a Bearer token in the `Authorization` header:
