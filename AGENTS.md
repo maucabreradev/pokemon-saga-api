@@ -138,8 +138,8 @@ A task is **NOT** complete until:
 
 When a task is completed:
 1. Mark the corresponding checkbox as `[x]` in `TASKS.md`
-2. Update `STATE.md` with: current project status, last completed task, next pending task, and any context notes for the next session
-3. Commit the updated `TASKS.md` and `STATE.md` on the feature branch before squash merge
+2. Update `State.md` with: current project status, last completed task, next pending task, and any context notes for the next session
+3. Commit the updated `TASKS.md` and `State.md` on the feature branch before squash merge
 
 Example commit: `chore(tasks): mark TASK-014 as completed and update project state`
 

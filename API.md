@@ -4,8 +4,8 @@ All endpoints are prefixed with `/api/v1`. Interactive documentation is availabl
 
 ## Implementation Status
 
-- Implemented: Auth, Users, Characters, Health (Phase 1-3).
-- Planned (spec only, not yet implemented): Forums, Topics, Posts, Friendships, Reactions, Moderation, Admin (Phase 4+). Swagger UI reflects only implemented routes.
+- Implemented: Auth, Users, Characters, Forums, Health (Phase 1-4).
+- Planned (spec only, not yet implemented): Topics, Posts, Friendships, Reactions, Moderation, Admin (Phase 5+). Swagger UI reflects only implemented routes.
 
 ## Authentication
 
