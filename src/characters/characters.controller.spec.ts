@@ -1,6 +1,7 @@
 import { CharactersController } from './characters.controller';
 import { CharactersService } from './characters.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
+import { UpdateCharacterDto } from './dto/update-character.dto';
 
 jest.mock('@nestjs/swagger', () => ({
   ApiTags: () => () => undefined,
@@ -21,10 +22,10 @@ jest.mock('../database/database.module', () => ({
 
 describe('CharactersController', () => {
   let controller: CharactersController;
-  let service: { create: jest.Mock; getPublicProfile: jest.Mock };
+  let service: { create: jest.Mock; getPublicProfile: jest.Mock; updateProfile: jest.Mock };
 
   beforeEach(() => {
-    service = { create: jest.fn(), getPublicProfile: jest.fn() };
+    service = { create: jest.fn(), getPublicProfile: jest.fn(), updateProfile: jest.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
   });
@@ -65,6 +66,27 @@ describe('CharactersController', () => {
 
       await expect(controller.getByReadableId(readableId)).resolves.toEqual(profile);
       expect(service.getPublicProfile).toHaveBeenCalledWith(readableId);
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('should delegate to the service with readable id, user id and dto', async () => {
+      const userId = '11111111-1111-4111-8111-111111111111';
+      const readableId = 'GreenAppleHunter123';
+      const dto: UpdateCharacterDto = { publicName: 'Raichu', bio: 'Evolved' };
+      const updated = {
+        readableId,
+        publicName: 'Raichu',
+        bio: 'Evolved',
+        avatarUrl: null,
+        customTitle: null,
+        signature: null,
+        createdAt: new Date(),
+      };
+      service.updateProfile.mockResolvedValue(updated);
+
+      await expect(controller.updateProfile(readableId, userId, dto)).resolves.toEqual(updated);
+      expect(service.updateProfile).toHaveBeenCalledWith(userId, readableId, dto);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { ForbiddenError, NotFoundError } from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { characters } from '../database/schema/characters';
@@ -7,6 +7,7 @@ import { charactersProfile } from '../database/schema/characters-profile';
 import { users } from '../database/schema/users';
 import { generateUniqueReadableId } from '../common/utils/readable-id-generator';
 import { CreateCharacterDto } from './dto/create-character.dto';
+import { UpdateCharacterDto } from './dto/update-character.dto';
 
 export interface CharacterWithProfile {
   id: string;
@@ -59,6 +60,91 @@ export class CharactersService {
     }
 
     return row;
+  }
+
+  async updateProfile(
+    userId: string,
+    readableId: string,
+    dto: UpdateCharacterDto,
+  ): Promise<CharacterPublicProfile> {
+    const [character] = await this.db
+      .select({
+        id: characters.id,
+        userId: characters.userId,
+        status: characters.status,
+      })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.readableId, readableId),
+          ne(characters.status, 'deleted'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!character) {
+      throw new NotFoundError('Character', readableId);
+    }
+
+    if (character.status === 'banned') {
+      throw new ForbiddenError('Banned characters cannot be updated');
+    }
+
+    if (character.userId !== userId) {
+      throw new ForbiddenError('You do not own this character');
+    }
+
+    const now = new Date();
+
+    await this.db.transaction(async (tx) => {
+      if (dto.publicName !== undefined) {
+        await tx
+          .update(characters)
+          .set({ publicName: dto.publicName, updatedAt: now })
+          .where(eq(characters.id, character.id));
+      }
+
+      const profileUpdates = {
+        ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
+        ...(dto.avatarUrl !== undefined ? { avatarUrl: dto.avatarUrl } : {}),
+        ...(dto.customTitle !== undefined ? { customTitle: dto.customTitle } : {}),
+        ...(dto.signature !== undefined ? { signature: dto.signature } : {}),
+      };
+
+      if (Object.keys(profileUpdates).length > 0) {
+        const updated = await tx
+          .update(charactersProfile)
+          .set({ ...profileUpdates, updatedAt: now })
+          .where(eq(charactersProfile.characterId, character.id))
+          .returning({ characterId: charactersProfile.characterId });
+
+        if (updated.length === 0) {
+          await tx.insert(charactersProfile).values({
+            characterId: character.id,
+            ...profileUpdates,
+            updatedAt: now,
+          });
+        }
+      }
+    });
+
+    const [profile] = await this.db
+      .select({
+        readableId: characters.readableId,
+        publicName: characters.publicName,
+        bio: charactersProfile.bio,
+        avatarUrl: charactersProfile.avatarUrl,
+        customTitle: charactersProfile.customTitle,
+        signature: charactersProfile.signature,
+        createdAt: characters.createdAt,
+      })
+      .from(characters)
+      .leftJoin(charactersProfile, eq(charactersProfile.characterId, characters.id))
+      .where(eq(characters.id, character.id))
+      .limit(1);
+
+    return profile;
   }
 
   async create(userId: string, dto: CreateCharacterDto): Promise<CharacterWithProfile> {

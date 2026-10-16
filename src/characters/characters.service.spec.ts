@@ -220,4 +220,147 @@ describe('CharactersService', () => {
       expect(where).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('updateProfile', () => {
+    const readableId = 'GreenAppleHunter123';
+    const ownerId = '11111111-1111-4111-8111-111111111111';
+    const otherUserId = '99999999-9999-4999-8999-999999999999';
+    const characterRow = {
+      id: 'char-id',
+      userId: ownerId,
+      readableId,
+      publicName: 'Pikachu',
+      status: 'active',
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+    const publicRow = {
+      readableId,
+      publicName: 'Raichu',
+      bio: 'Evolved electric mouse',
+      avatarUrl: 'https://example.com/avatar.png',
+      customTitle: 'Champion',
+      signature: 'Gotta catch em all',
+      createdAt: characterRow.createdAt,
+    };
+
+    function createUpdateDbMock(
+      characterRows: unknown[],
+      publicRows: unknown[],
+      profileUpdateReturning: unknown[] = [{ characterId: 'char-id' }],
+    ) {
+      let selectCalls = 0;
+      const select = jest.fn().mockImplementation(() => {
+        selectCalls++;
+        if (selectCalls === 1) {
+          // Ownership lookup: select().from().where().limit(1)
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue(characterRows),
+              }),
+            }),
+          };
+        }
+        // Re-read: select().from().leftJoin().where().limit(1)
+        return {
+          from: jest.fn().mockReturnValue({
+            leftJoin: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue(publicRows),
+              }),
+            }),
+          }),
+        };
+      });
+
+      const charSet = jest.fn().mockImplementation(() => ({
+        where: jest.fn().mockResolvedValue([]),
+      }));
+      const profileSet = jest.fn().mockImplementation(() => ({
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue(profileUpdateReturning),
+        }),
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const update = jest.fn((table: any) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        set: (table as any) === characters ? charSet : profileSet,
+      }));
+      const insertValues = jest.fn().mockResolvedValue([]);
+      const insert = jest.fn().mockReturnValue({ values: insertValues });
+      const transactionMock = jest.fn((cb: (tx: unknown) => unknown) => cb({ update, insert }));
+
+      return { dbMock: { select, transaction: transactionMock }, charSet, profileSet, insert };
+    }
+
+    it('should update publicName and profile fields, returning the updated profile', async () => {
+      const { dbMock, charSet, profileSet } = createUpdateDbMock([characterRow], [publicRow]);
+      const service = createService(dbMock);
+
+      const result = await service.updateProfile(ownerId, readableId, {
+        publicName: 'Raichu',
+        bio: 'Evolved electric mouse',
+      });
+
+      expect(result).toEqual(publicRow);
+      expect(charSet).toHaveBeenCalledWith(
+        expect.objectContaining({ publicName: 'Raichu', updatedAt: expect.any(Date) }),
+      );
+      expect(profileSet).toHaveBeenCalledWith(
+        expect.objectContaining({ bio: 'Evolved electric mouse', updatedAt: expect.any(Date) }),
+      );
+      // Only provided fields are updated — never ownership or status.
+      expect(charSet.mock.calls[0][0]).not.toHaveProperty('userId');
+      expect(charSet.mock.calls[0][0]).not.toHaveProperty('status');
+    });
+
+    it('should support partial updates without touching the characters table', async () => {
+      const { dbMock, charSet, profileSet } = createUpdateDbMock([characterRow], [publicRow]);
+      const service = createService(dbMock);
+
+      await service.updateProfile(ownerId, readableId, { signature: 'Gotta catch em all' });
+
+      expect(charSet).not.toHaveBeenCalled();
+      expect(profileSet).toHaveBeenCalledWith(
+        expect.objectContaining({ signature: 'Gotta catch em all' }),
+      );
+    });
+
+    it('should insert the profile row when none exists yet', async () => {
+      const { dbMock, insert } = createUpdateDbMock([characterRow], [publicRow], []);
+      const service = createService(dbMock);
+
+      await service.updateProfile(ownerId, readableId, { bio: 'First bio' });
+
+      expect(insert).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw NotFoundError when the character does not exist', async () => {
+      const { dbMock } = createUpdateDbMock([], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.updateProfile(ownerId, 'NopeNopeNope000', { bio: 'x' }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('should throw ForbiddenError when the requester is not the owner', async () => {
+      const { dbMock } = createUpdateDbMock([characterRow], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.updateProfile(otherUserId, readableId, { bio: 'hijack' }),
+      ).rejects.toBeInstanceOf(ForbiddenError);
+    });
+
+    it('should throw ForbiddenError when the character is banned', async () => {
+      const bannedRow = { ...characterRow, status: 'banned' };
+      const { dbMock } = createUpdateDbMock([bannedRow], []);
+      const service = createService(dbMock);
+
+      await expect(service.updateProfile(ownerId, readableId, { bio: 'x' })).rejects.toBeInstanceOf(
+        ForbiddenError,
+      );
+    });
+  });
 });
