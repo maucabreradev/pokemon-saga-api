@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
-import { NotFoundError } from '../common/exceptions/app-errors';
+import { ConflictError, NotFoundError } from '../common/exceptions/app-errors';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { categories } from '../database/schema/categories';
 import { forums } from '../database/schema/forums';
@@ -361,5 +361,39 @@ export class ForumsService {
       });
 
     return updated;
+  }
+
+  async deleteForum(id: string): Promise<void> {
+    const [forum] = await this.db
+      .select({ id: forums.id })
+      .from(forums)
+      .where(eq(forums.id, id))
+      .limit(1);
+
+    if (!forum) {
+      throw new NotFoundError('Forum', id);
+    }
+
+    const [activeTopic] = await this.db
+      .select({ id: topics.id })
+      .from(topics)
+      .where(and(eq(topics.forumId, id), eq(topics.isDeleted, false), isNull(topics.deletedAt)))
+      .limit(1);
+
+    if (activeTopic) {
+      throw new ConflictError('Forum has active topics and cannot be deleted');
+    }
+
+    const [child] = await this.db
+      .select({ id: forums.id })
+      .from(forums)
+      .where(eq(forums.parentForumId, id))
+      .limit(1);
+
+    if (child) {
+      throw new ConflictError('Forum has sub-forums and cannot be deleted');
+    }
+
+    await this.db.delete(forums).where(eq(forums.id, id));
   }
 }

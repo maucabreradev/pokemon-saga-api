@@ -1,9 +1,21 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -183,5 +195,20 @@ export class ForumsController {
   @ApiNotFoundResponse({ description: 'Forum not found' })
   async changeForumVisibility(@Param('id') id: string, @Body() dto: UpdateVisibilityDto) {
     return this.forumsService.changeForumVisibility(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Roles('admin', 'webmaster')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete an empty forum' })
+  @ApiParam({ name: 'id', example: '22222222-2222-4222-8222-222222222222' })
+  @ApiNoContentResponse({ description: 'Forum deleted' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Admin or webmaster role required' })
+  @ApiNotFoundResponse({ description: 'Forum not found' })
+  @ApiConflictResponse({ description: 'Forum has active topics or sub-forums' })
+  async deleteForum(@Param('id') id: string) {
+    await this.forumsService.deleteForum(id);
   }
 }
