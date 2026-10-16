@@ -6,10 +6,13 @@ jest.mock('@nestjs/swagger', () => ({
   ApiTags: () => () => undefined,
   ApiOperation: () => () => undefined,
   ApiCreatedResponse: () => () => undefined,
+  ApiOkResponse: () => () => undefined,
+  ApiNotFoundResponse: () => () => undefined,
   ApiBadRequestResponse: () => () => undefined,
   ApiUnauthorizedResponse: () => () => undefined,
   ApiForbiddenResponse: () => () => undefined,
   ApiBearerAuth: () => () => undefined,
+  ApiParam: () => () => undefined,
 }));
 
 jest.mock('../database/database.module', () => ({
@@ -18,10 +21,10 @@ jest.mock('../database/database.module', () => ({
 
 describe('CharactersController', () => {
   let controller: CharactersController;
-  let service: { create: jest.Mock };
+  let service: { create: jest.Mock; getPublicProfile: jest.Mock };
 
   beforeEach(() => {
-    service = { create: jest.fn() };
+    service = { create: jest.fn(), getPublicProfile: jest.fn() };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
   });
@@ -43,6 +46,25 @@ describe('CharactersController', () => {
 
       await expect(controller.create(userId, dto)).resolves.toEqual(created);
       expect(service.create).toHaveBeenCalledWith(userId, dto);
+    });
+  });
+
+  describe('getByReadableId', () => {
+    it('should delegate to the service with the readable id', async () => {
+      const readableId = 'GreenAppleHunter123';
+      const profile = {
+        readableId,
+        publicName: 'Pikachu',
+        bio: 'Electric mouse',
+        avatarUrl: null,
+        customTitle: null,
+        signature: null,
+        createdAt: new Date(),
+      };
+      service.getPublicProfile.mockResolvedValue(profile);
+
+      await expect(controller.getByReadableId(readableId)).resolves.toEqual(profile);
+      expect(service.getPublicProfile).toHaveBeenCalledWith(readableId);
     });
   });
 });
