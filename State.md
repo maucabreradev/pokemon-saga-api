@@ -3,13 +3,13 @@
 **Last updated**: 2026-10-16
 **Current phase**: Phase 4 complete — Forums done (TASK-047 complete, next TASK-048 Phase 5 Topics)
 
-## Verification (2026-10-16, branch develop)
+## Verification (2026-10-16, branch fix/docs-status-hygiene-2)
 
-- `pnpm test`: 26 suites / 203 tests pass (worker teardown warning only, exit 1 on force-exit)
+- `pnpm test`: 33 suites / 278 tests pass (exit 1 is the known worker force-exit teardown warning)
 - `pnpm test:e2e`: 2 suites / 3 tests pass (health + auth rate-limit 429 path)
-- `eslint src/**/*.ts tests/**/*.ts`: clean
+- `pnpm lint`: clean (exit 0)
 - `pnpm db:generate`: No schema changes, nothing to migrate
-- Docs hygiene (State.md stale line, API.md status, TASK-078/079/081 TODO rescope) fixed on `feature/docs-status-hygiene`
+- Docs hygiene (State.md stale Verification/Last Completed, API.md Phase 4 status, TASK-078/079/081 rescope, AGENTS.md State.md filename) fixed on `fix/docs-status-hygiene-2`
 
 ## Current Status
 
@@ -17,8 +17,8 @@ Phase 4 is complete. TASK-047 (forum visibility guard) implemented as ForumsServ
 
 ## Last Completed
 
-- **TASK-038** — Implement GET character posts: topic join with double deleted filter on both sides; bodyPreview truncation; 203/203 unit and 3/3 e2e pass, lint clean, no migration. Phase 3 complete.
-- **TASK-030** — Implement human-readable ID generator: `generateReadableId`, `generateUniqueReadableId` (5 retries, ConflictError), `isValidReadableId`; 115/115 unit and 3/3 e2e pass, lint clean, no migration needed.
+- **TASK-047** — Implement forum visibility guard: ForumsService.assertForumAccess reusable primitive (404 missing, 403 guest on registered/characters_only, 403 without active character; Phase 5 wiring deferred); 278/278 unit, lint + tsc clean, no migration. Phase 4 complete.
+- **TASK-046** — Implement PATCH /forums/:id/order via reorderForum (staff @Roles admin+webmaster, clamped position + sibling renumber in tx, 404 missing); 271/271 unit, lint + tsc clean, no migration.
 
 ## Recent Activity
 

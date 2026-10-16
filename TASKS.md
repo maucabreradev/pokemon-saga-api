@@ -108,13 +108,13 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [ ] **TASK-075** — Implement banned character access restriction
 - [ ] **TASK-076** — Add absent user status logic
 - [ ] **TASK-077** — Implement graceful shutdown handling
-- [ ] **TASK-078** — Add request validation pipes globally
-- [ ] **TASK-079** — Implement response transformation interceptor
+- [ ] **TASK-078** — Audit and harden global request validation pipes (base pipe exists from TASK-008)
+- [ ] **TASK-079** — Audit and harden response transformation interceptor (base interceptor exists from TASK-008)
 - [ ] **TASK-080** — Add security audit logging
 
 ## Phase 9 — Testing
 
-- [ ] **TASK-081** — Set up Jest configuration and test environment
+- [ ] **TASK-081** — Audit and consolidate Jest configuration and test environment (base configs already running)
 - [ ] **TASK-082** — Write unit tests for auth service
 - [ ] **TASK-083** — Write unit tests for character service
 - [ ] **TASK-084** — Write unit tests for readable ID generator
