@@ -34,6 +34,7 @@ describe('CharactersController', () => {
     setMainCharacter: jest.Mock;
     deleteCharacter: jest.Mock;
     getCharacterTopics: jest.Mock;
+    getCharacterFriends: jest.Mock;
   };
 
   beforeEach(() => {
@@ -45,6 +46,7 @@ describe('CharactersController', () => {
       setMainCharacter: jest.fn(),
       deleteCharacter: jest.fn(),
       getCharacterTopics: jest.fn(),
+      getCharacterFriends: jest.fn(),
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     controller = new CharactersController(service as any as CharactersService);
@@ -179,6 +181,18 @@ describe('CharactersController', () => {
 
       await expect(controller.getCharacterTopics(readableId, query)).resolves.toEqual(rows);
       expect(service.getCharacterTopics).toHaveBeenCalledWith(readableId, query);
+    });
+  });
+
+  describe('getCharacterFriends', () => {
+    it('should delegate to the service with readable id and query', async () => {
+      const readableId = 'GreenAppleHunter123';
+      const query = { page: 1, limit: 20 };
+      const rows = [{ readableId: 'Friend111', publicName: 'Bulbasaur', avatarUrl: null }];
+      service.getCharacterFriends.mockResolvedValue(rows);
+
+      await expect(controller.getCharacterFriends(readableId, query)).resolves.toEqual(rows);
+      expect(service.getCharacterFriends).toHaveBeenCalledWith(readableId, query);
     });
   });
 });

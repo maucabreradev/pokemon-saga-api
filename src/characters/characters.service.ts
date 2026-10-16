@@ -7,6 +7,7 @@ import { DRIZZLE, DrizzleDB } from '../database/database.module';
 import { characters } from '../database/schema/characters';
 import { charactersProfile } from '../database/schema/characters-profile';
 import { forums } from '../database/schema/forums';
+import { friendships } from '../database/schema/friendships';
 import { topics } from '../database/schema/topics';
 import { users } from '../database/schema/users';
 import { generateUniqueReadableId } from '../common/utils/readable-id-generator';
@@ -40,6 +41,12 @@ export interface CharacterTopicSummary {
   forumName: string;
   replyCount: number;
   createdAt: Date;
+}
+
+export interface CharacterFriendSummary {
+  readableId: string;
+  publicName: string;
+  avatarUrl: string | null;
 }
 
 @Injectable()
@@ -386,6 +393,72 @@ export class CharactersService {
       .orderBy(desc(topics.createdAt))
       .limit(limit)
       .offset((page - 1) * limit);
+  }
+
+  async getCharacterFriends(
+    readableId: string,
+    query: PaginationQueryDto,
+  ): Promise<CharacterFriendSummary[]> {
+    const [character] = await this.db
+      .select({ id: characters.id })
+      .from(characters)
+      .where(
+        and(
+          eq(characters.readableId, readableId),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!character) {
+      throw new NotFoundError('Character', readableId);
+    }
+
+    const friendSelection = {
+      readableId: characters.readableId,
+      publicName: characters.publicName,
+      avatarUrl: charactersProfile.avatarUrl,
+      friendshipCreatedAt: friendships.createdAt,
+    };
+
+    const asRequester = await this.db
+      .select(friendSelection)
+      .from(friendships)
+      .innerJoin(characters, eq(friendships.addresseeCharacterId, characters.id))
+      .leftJoin(charactersProfile, eq(charactersProfile.characterId, characters.id))
+      .where(
+        and(
+          eq(friendships.requesterCharacterId, character.id),
+          eq(friendships.status, 'accepted'),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .orderBy(desc(friendships.createdAt));
+
+    const asAddressee = await this.db
+      .select(friendSelection)
+      .from(friendships)
+      .innerJoin(characters, eq(friendships.requesterCharacterId, characters.id))
+      .leftJoin(charactersProfile, eq(charactersProfile.characterId, characters.id))
+      .where(
+        and(
+          eq(friendships.addresseeCharacterId, character.id),
+          eq(friendships.status, 'accepted'),
+          eq(characters.status, 'active'),
+          isNull(characters.deletedAt),
+        ),
+      )
+      .orderBy(desc(friendships.createdAt));
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    return [...asRequester, ...asAddressee]
+      .sort((a, b) => b.friendshipCreatedAt.getTime() - a.friendshipCreatedAt.getTime())
+      .slice((page - 1) * limit, page * limit)
+      .map(({ readableId, publicName, avatarUrl }) => ({ readableId, publicName, avatarUrl }));
   }
 
   async create(userId: string, dto: CreateCharacterDto): Promise<CharacterWithProfile> {

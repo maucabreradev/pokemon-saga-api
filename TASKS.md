@@ -52,7 +52,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-034** — Implement POST /characters/:readableId/set-main
 - [x] **TASK-035** — Implement DELETE /characters/:readableId (soft delete)
 - [x] **TASK-036** — Implement GET /characters/:readableId/topics
-- [ ] **TASK-037** — Implement GET /characters/:readableId/friends
+- [x] **TASK-037** — Implement GET /characters/:readableId/friends
 - [ ] **TASK-038** — Implement GET /characters/:readableId/posts
 
 ## Phase 4 — Forums

@@ -223,4 +223,30 @@ export class CharactersController {
   ) {
     return this.charactersService.getCharacterTopics(readableId, query);
   }
+
+  @Get(':readableId/friends')
+  @Public()
+  @ApiOperation({ summary: "List character's friends" })
+  @ApiParam({ name: 'readableId', example: 'GreenAppleHunter123' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiOkResponse({
+    description: "Character's friends newest first",
+    schema: {
+      example: [
+        {
+          readableId: 'BlueOceanRunner456',
+          publicName: 'Charmander',
+          avatarUrl: 'https://example.com/avatar.png',
+        },
+      ],
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Character not found' })
+  async getCharacterFriends(
+    @Param('readableId') readableId: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.charactersService.getCharacterFriends(readableId, query);
+  }
 }
