@@ -203,9 +203,10 @@
 
 **Context**: TASK-050 adds `isomorphic-dompurify` (spec-mandated sanitizer) for topic bodies. Its transitive chain (`jsdom` → `parse5` v8, `html-encoding-sniffer` v7, `@csstools/*` `.mjs`) ships ESM-only files that the unit Jest config (ts-jest, CJS, `node_modules` untransformed) cannot parse. ADR-009 solved the same class of problem for e2e/integration via babel-jest, but unit tests were left out.
 
-**Decision**: Mirror the ADR-009 babel transform (`@babel/plugin-transform-modules-commonjs` plus `@babel/plugin-transform-export-namespace-from` for `parse5` v8's `export * as` syntax) into `jest.config.js`, and widen all three configs' JS pattern to `^.+\.m?js$` so `.mjs` files are covered. e2e/integration configs get the same plugin and pattern because they boot `AppModule`, which now transitively loads the sanitizer.
+**Decision**: Mirror the ADR-009 babel transform (`@babel/plugin-transform-modules-commonjs` plus `@babel/plugin-transform-export-namespace-from` for `parse5` v8's `export * as` syntax) into `jest.config.js`, and widen all three configs' JS pattern to `^.+\.m?js$` so `.mjs` files are covered. e2e/integration configs get the same plugin and pattern because they boot `AppModule`, which now transitively loads the sanitizer. `transformIgnorePatterns` uses an allowlist (jsdom chain + `@nestjs` ESM dists for e2e/integration, jsdom chain only for unit) instead of transforming all of `node_modules` — transform-all was tried first and blown away for worker memory and suite time.
 
 **Consequences**:
-- Unit suites pay the babel transform over `node_modules` JS plus a heavy one-time jsdom load wherever the sanitizer is imported (measured ~95s for the sanitizer spec alone); accepted cost of testing the real sanitizer instead of a mock
-- New ESM-only transitive deps need no per-package allowlist — they are transformed by default
+- Only the allowlisted ESM packages pay the babel transform; unit suite time dropped back (measured ~42s for 38 suites vs ~152s with transform-all)
+- New ESM-only transitive deps surface as `Unexpected token 'export'` naming the exact `.pnpm` path — add the package to the allowlist in all three configs
+- e2e/integration allowlists additionally cover `@nestjs` ESM dists (original ADR-009 subjects); unit does not need them
 - Rejected alternative: swapping DOMPurify for a CJS-only sanitizer (contradicts the TASK-050 acceptance criterion naming DOMPurify)

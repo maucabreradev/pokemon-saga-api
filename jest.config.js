@@ -17,10 +17,13 @@ module.exports = {
       },
     ],
   },
-  // Mirrors tests/jest-e2e.json (ADR-009, extended by ADR-014): ESM-only
-  // transitive deps (e.g. html-encoding-sniffer via jsdom for DOMPurify)
-  // must be transformed to CJS in unit tests as well.
-  transformIgnorePatterns: [],
+  // Only ESM-only transitive deps are transformed (ADR-014). Everything else
+  // in node_modules keeps the default ignore for speed and memory.
+  // The first pattern covers pnpm's .pnpm layout, the second plain layouts.
+  transformIgnorePatterns: [
+    '/node_modules/\\.pnpm/(?!(parse5@|html-encoding-sniffer@|jsdom@|isomorphic-dompurify@|entities@|cssstyle@|@csstools\\+|@exodus\\+|@asamuzakjp\\+|data-urls@|decimal\\.js@|whatwg-encoding@))',
+    '/node_modules/(?!\\.pnpm|isomorphic-dompurify|jsdom|parse5|entities|cssstyle|html-encoding-sniffer|@csstools|@exodus|@asamuzakjp|data-urls|decimal\\.js|whatwg-encoding)',
+  ],
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: './coverage',
   moduleNameMapper: {
