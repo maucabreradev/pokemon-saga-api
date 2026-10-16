@@ -818,4 +818,109 @@ describe('CharactersService', () => {
       expect(lookupWhere).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('getCharacterFriends', () => {
+    const readableId = 'GreenAppleHunter123';
+    const characterRow = { id: 'char-id' };
+    const friendRow = (readableId: string, publicName: string, friendshipCreatedAt: string) => ({
+      readableId,
+      publicName,
+      avatarUrl: null,
+      friendshipCreatedAt: new Date(friendshipCreatedAt),
+    });
+
+    function createFriendsDbMock(
+      characterRows: unknown[],
+      requesterRows: unknown[],
+      addresseeRows: unknown[],
+    ) {
+      let selectCalls = 0;
+      const select = jest.fn().mockImplementation(() => {
+        selectCalls++;
+        if (selectCalls === 1) {
+          // Character lookup: select().from().where().limit(1)
+          return {
+            from: jest.fn().mockReturnValue({
+              where: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue(characterRows),
+              }),
+            }),
+          };
+        }
+        // Friendship direction query: select().from().innerJoin().leftJoin().where().orderBy()
+        const rows = selectCalls === 2 ? requesterRows : addresseeRows;
+        return {
+          from: jest.fn().mockReturnValue({
+            innerJoin: jest.fn().mockReturnValue({
+              leftJoin: jest.fn().mockReturnValue({
+                where: jest.fn().mockReturnValue({
+                  orderBy: jest.fn().mockResolvedValue(rows),
+                }),
+              }),
+            }),
+          }),
+        };
+      });
+
+      return { dbMock: { select } };
+    }
+
+    it('should merge friends from both directions newest first', async () => {
+      const requesterRows = [friendRow('OldFriend111', 'Bulbasaur', '2026-10-10T00:00:00.000Z')];
+      const addresseeRows = [friendRow('NewFriend222', 'Charmander', '2026-10-15T00:00:00.000Z')];
+      const { dbMock } = createFriendsDbMock([characterRow], requesterRows, addresseeRows);
+      const service = createService(dbMock);
+
+      const result = await service.getCharacterFriends(readableId, { page: 1, limit: 20 });
+
+      expect(result).toEqual([
+        { readableId: 'NewFriend222', publicName: 'Charmander', avatarUrl: null },
+        { readableId: 'OldFriend111', publicName: 'Bulbasaur', avatarUrl: null },
+      ]);
+    });
+
+    it('should apply pagination after merging', async () => {
+      const requesterRows = [
+        friendRow('Friend111', 'Bulbasaur', '2026-10-10T00:00:00.000Z'),
+        friendRow('Friend222', 'Ivysaur', '2026-10-11T00:00:00.000Z'),
+      ];
+      const addresseeRows = [friendRow('Friend333', 'Venusaur', '2026-10-12T00:00:00.000Z')];
+      const { dbMock } = createFriendsDbMock([characterRow], requesterRows, addresseeRows);
+      const service = createService(dbMock);
+
+      const result = await service.getCharacterFriends(readableId, { page: 2, limit: 2 });
+
+      expect(result).toEqual([
+        { readableId: 'Friend111', publicName: 'Bulbasaur', avatarUrl: null },
+      ]);
+    });
+
+    it('should return an empty array when the character has no friends', async () => {
+      const { dbMock } = createFriendsDbMock([characterRow], [], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.getCharacterFriends(readableId, { page: 1, limit: 20 }),
+      ).resolves.toEqual([]);
+    });
+
+    it('should throw NotFoundError when the character does not exist', async () => {
+      const { dbMock } = createFriendsDbMock([], [], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.getCharacterFriends('NopeNopeNope000', { page: 1, limit: 20 }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('should throw NotFoundError when the character is deleted or banned (same as missing)', async () => {
+      // Non-active rows are filtered in the WHERE clause, so the db returns [].
+      const { dbMock } = createFriendsDbMock([], [], []);
+      const service = createService(dbMock);
+
+      await expect(
+        service.getCharacterFriends(readableId, { page: 1, limit: 20 }),
+      ).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
 });
