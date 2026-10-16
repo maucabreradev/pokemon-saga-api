@@ -8,6 +8,7 @@ import { topics } from '../database/schema/topics';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateForumDto } from './dto/create-forum.dto';
 import { UpdateForumDto } from './dto/update-forum.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 
 export interface ForumTreeNode {
@@ -395,5 +396,55 @@ export class ForumsService {
     }
 
     await this.db.delete(forums).where(eq(forums.id, id));
+  }
+
+  async reorderForum(id: string, dto: UpdateOrderDto) {
+    const [forum] = await this.db
+      .select({
+        id: forums.id,
+        categoryId: forums.categoryId,
+        parentForumId: forums.parentForumId,
+        name: forums.name,
+        description: forums.description,
+        visibility: forums.visibility,
+        displayOrder: forums.displayOrder,
+      })
+      .from(forums)
+      .where(eq(forums.id, id))
+      .limit(1);
+
+    if (!forum) {
+      throw new NotFoundError('Forum', id);
+    }
+
+    const siblings = await this.db
+      .select({ id: forums.id, displayOrder: forums.displayOrder })
+      .from(forums)
+      .where(
+        forum.parentForumId === null
+          ? and(eq(forums.categoryId, forum.categoryId), isNull(forums.parentForumId))
+          : and(
+              eq(forums.categoryId, forum.categoryId),
+              eq(forums.parentForumId, forum.parentForumId),
+            ),
+      )
+      .orderBy(asc(forums.displayOrder));
+
+    const ordered = siblings.filter((sibling) => sibling.id !== id);
+    const position = Math.min(dto.displayOrder, ordered.length);
+    ordered.splice(position, 0, { id, displayOrder: forum.displayOrder });
+
+    const now = new Date();
+
+    await this.db.transaction(async (tx) => {
+      for (const [index, sibling] of ordered.entries()) {
+        await tx
+          .update(forums)
+          .set({ displayOrder: index, updatedAt: now })
+          .where(eq(forums.id, sibling.id));
+      }
+    });
+
+    return { ...forum, displayOrder: position };
   }
 }

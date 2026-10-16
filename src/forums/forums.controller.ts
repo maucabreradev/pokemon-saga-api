@@ -29,6 +29,7 @@ import { ForumsService } from './forums.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateForumDto } from './dto/create-forum.dto';
 import { UpdateForumDto } from './dto/update-forum.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 import { UpdateVisibilityDto } from './dto/update-visibility.dto';
 
 @ApiTags('Forums')
@@ -210,5 +211,32 @@ export class ForumsController {
   @ApiConflictResponse({ description: 'Forum has active topics or sub-forums' })
   async deleteForum(@Param('id') id: string) {
     await this.forumsService.deleteForum(id);
+  }
+
+  @Patch(':id/order')
+  @Roles('admin', 'webmaster')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reorder a forum within its siblings' })
+  @ApiParam({ name: 'id', example: '22222222-2222-4222-8222-222222222222' })
+  @ApiOkResponse({
+    description: 'Forum with updated display order',
+    schema: {
+      example: {
+        id: '22222222-2222-4222-8222-222222222222',
+        categoryId: '11111111-1111-4111-8111-111111111111',
+        parentForumId: null,
+        name: 'Announcements',
+        description: null,
+        visibility: 'public',
+        displayOrder: 0,
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Admin or webmaster role required' })
+  @ApiNotFoundResponse({ description: 'Forum not found' })
+  async reorderForum(@Param('id') id: string, @Body() dto: UpdateOrderDto) {
+    return this.forumsService.reorderForum(id, dto);
   }
 }

@@ -1,7 +1,7 @@
 # Project State
 
 **Last updated**: 2026-10-16
-**Current phase**: Phase 4 in progress — Forums (TASK-045 complete, next TASK-046 reorder)
+**Current phase**: Phase 4 in progress — Forums (TASK-046 complete, next TASK-047 visibility guard)
 
 ## Verification (2026-10-16, branch develop)
 
@@ -13,7 +13,7 @@
 
 ## Current Status
 
-Phase 4 is in progress. TASK-045 (DELETE /forums/:id) implemented via ForumsService.deleteForum and ForumsController.deleteForum. Staff-only via @Roles('admin', 'webmaster'); hard delete guarded by 409 on active topics or sub-forums (no migration, cascade never reached with content); idempotent 204 void; 262/262 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-046 (PATCH /forums/:id/order admin).
+Phase 4 is in progress. TASK-046 (PATCH /forums/:id/order) implemented via ForumsService.reorderForum and ForumsController.reorderForum. Staff-only via @Roles('admin', 'webmaster'); moves forum to clamped position and renumbers siblings 0..n in one transaction, 404 when missing; 271/271 unit pass, lint + tsc clean, no migration (db:generate clean). Next is TASK-047 (forum visibility guard).
 
 ## Last Completed
 
@@ -24,6 +24,7 @@ Phase 4 is in progress. TASK-045 (DELETE /forums/:id) implemented via ForumsServ
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-16 | TASK-046 | PATCH /forums/:id/order via reorderForum (staff @Roles admin+webmaster, clamped position + sibling renumber in tx, 404 missing); 271/271 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-045 | DELETE /forums/:id via deleteForum (staff @Roles admin+webmaster, 409 on active topics/sub-forums, 204 void); 262/262 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-044 | PATCH /forums/:id/visibility via changeForumVisibility (staff @Roles admin+webmaster, required enum DTO, 404 missing); 257/257 unit, lint + tsc clean, no migration |
 | 2026-10-16 | TASK-043 | PATCH /forums/:id via updateForum (staff @Roles admin+webmaster, partial name/description, no-op returns current, 404 missing); 249/249 unit, lint + tsc clean, no migration |

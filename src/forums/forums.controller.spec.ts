@@ -180,4 +180,24 @@ describe('ForumsController', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe('reorderForum', () => {
+    it('should return the reordered forum from the service', async () => {
+      // Arrange
+      const dto = { displayOrder: 0 };
+      const updated = { id: 'forum-1', displayOrder: 0 };
+      const serviceMock = { reorderForum: jest.fn().mockResolvedValue(updated) };
+      const controller = new ForumsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.reorderForum('forum-1', dto);
+
+      // Assert
+      expect(serviceMock.reorderForum).toHaveBeenCalledWith('forum-1', dto);
+      expect(result).toBe(updated);
+    });
+  });
 });
