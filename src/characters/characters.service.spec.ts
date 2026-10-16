@@ -169,4 +169,55 @@ describe('CharactersService', () => {
       expect(generateUniqueReadableId).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('getPublicProfile', () => {
+    const readableId = 'GreenAppleHunter123';
+    const publicRow = {
+      readableId,
+      publicName: 'Pikachu',
+      bio: 'Electric mouse Pokemon',
+      avatarUrl: 'https://example.com/avatar.png',
+      customTitle: 'Champion',
+      signature: 'Gotta catch em all',
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+
+    function createPublicProfileDbMock(rows: unknown[]) {
+      const limit = jest.fn().mockResolvedValue(rows);
+      const where = jest.fn().mockReturnValue({ limit });
+      const leftJoin = jest.fn().mockReturnValue({ where });
+      const from = jest.fn().mockReturnValue({ leftJoin });
+      const select = jest.fn().mockReturnValue({ from });
+      return { dbMock: { select }, select, from, leftJoin, where, limit };
+    }
+
+    it('should return the public profile without sensitive fields', async () => {
+      const { dbMock } = createPublicProfileDbMock([publicRow]);
+      const service = createService(dbMock);
+
+      const result = await service.getPublicProfile(readableId);
+
+      expect(result).toEqual(publicRow);
+      expect(result).not.toHaveProperty('userId');
+      expect(result).not.toHaveProperty('id');
+    });
+
+    it('should throw NotFoundError when the character does not exist', async () => {
+      const { dbMock } = createPublicProfileDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(service.getPublicProfile('NopeNopeNope000')).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+
+    it('should throw NotFoundError when the character is banned or deleted (same as missing)', async () => {
+      // Banned/deleted rows are filtered in the WHERE clause, so the db returns [].
+      const { dbMock, where } = createPublicProfileDbMock([]);
+      const service = createService(dbMock);
+
+      await expect(service.getPublicProfile(readableId)).rejects.toBeInstanceOf(NotFoundError);
+      expect(where).toHaveBeenCalledTimes(1);
+    });
+  });
 });
