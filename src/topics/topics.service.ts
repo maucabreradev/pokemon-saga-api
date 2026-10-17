@@ -425,4 +425,54 @@ export class TopicsService {
 
     return updated;
   }
+
+  async deleteTopic(id: string, userId: string, userRole: UserRole): Promise<void> {
+    // Lookup without the deleted filters so we can distinguish "not found" from
+    // "already deleted" (idempotent 204), mirroring deleteCharacter's shape.
+    const [topic] = await this.db
+      .select({
+        id: topics.id,
+        isLocked: topics.isLocked,
+        authorUserId: characters.userId,
+        authorStatus: characters.status,
+        authorDeletedAt: characters.deletedAt,
+        isDeleted: topics.isDeleted,
+        deletedAt: topics.deletedAt,
+      })
+      .from(topics)
+      .innerJoin(characters, eq(topics.authorCharacterId, characters.id))
+      .where(eq(topics.id, id))
+      .limit(1);
+
+    if (!topic) {
+      throw new NotFoundError('Topic', id);
+    }
+
+    // Already gone: idempotent 204, no write and no auth check.
+    if (topic.isDeleted || topic.deletedAt !== null) {
+      return;
+    }
+
+    const isStaff = userRole === 'admin' || userRole === 'webmaster';
+    const isActiveAuthor =
+      topic.authorUserId === userId &&
+      topic.authorStatus === 'active' &&
+      topic.authorDeletedAt === null;
+
+    if (!isActiveAuthor && !isStaff) {
+      throw new ForbiddenError('You do not own this topic');
+    }
+
+    // A lock freezes the topic for everyone but staff, who still moderate it.
+    if (topic.isLocked && !isStaff) {
+      throw new ForbiddenError('This topic is locked');
+    }
+
+    const now = new Date();
+
+    await this.db
+      .update(topics)
+      .set({ isDeleted: true, deletedAt: now, updatedAt: now })
+      .where(eq(topics.id, id));
+  }
 }

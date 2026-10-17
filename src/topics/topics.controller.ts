@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -14,6 +15,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -169,5 +171,24 @@ export class TopicsController {
     @Body() dto: UpdateTopicDto,
   ) {
     return this.topicsService.updateTopic(id, userId, role, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Soft delete a topic (author or staff)' })
+  @ApiParam({ name: 'id', example: '33333333-3333-4333-8333-333333333333' })
+  @ApiNoContentResponse({ description: 'Topic soft deleted' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({
+    description: 'Not the author or staff, inactive author character, or topic is locked',
+  })
+  @ApiNotFoundResponse({ description: 'Topic not found' })
+  async deleteTopic(
+    @Param('id') id: string,
+    @CurrentUser('sub') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    await this.topicsService.deleteTopic(id, userId, role);
   }
 }

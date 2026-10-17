@@ -6,6 +6,7 @@ jest.mock('@nestjs/swagger', () => ({
   ApiOkResponse: () => () => undefined,
   ApiNotFoundResponse: () => () => undefined,
   ApiForbiddenResponse: () => () => undefined,
+  ApiNoContentResponse: () => () => undefined,
   ApiParam: () => () => undefined,
   ApiQuery: () => () => undefined,
   ApiCreatedResponse: () => () => undefined,
@@ -108,6 +109,24 @@ describe('TopicsController', () => {
       // Assert
       expect(serviceMock.updateTopic).toHaveBeenCalledWith('topic-id-1', 'user-id-1', 'admin', dto);
       expect(result).toBe(updated);
+    });
+  });
+
+  describe('deleteTopic', () => {
+    it('should delegate the delete with the topic id, user and role', async () => {
+      // Arrange
+      const serviceMock = { deleteTopic: jest.fn().mockResolvedValue(undefined) };
+      const controller = new TopicsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.deleteTopic('topic-id-1', 'user-id-1', 'admin');
+
+      // Assert
+      expect(serviceMock.deleteTopic).toHaveBeenCalledWith('topic-id-1', 'user-id-1', 'admin');
+      expect(result).toBeUndefined();
     });
   });
 });
