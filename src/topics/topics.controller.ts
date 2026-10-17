@@ -25,7 +25,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { UserRole } from '../auth/decorators/roles.decorator';
+import { Roles, UserRole } from '../auth/decorators/roles.decorator';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { CreateTopicDto } from './dto/create-topic.dto';
 import { ListTopicsQueryDto } from './dto/list-topics-query.dto';
@@ -190,5 +190,34 @@ export class TopicsController {
     @CurrentUser('role') role: UserRole,
   ) {
     await this.topicsService.deleteTopic(id, userId, role);
+  }
+
+  @Patch(':id/pin')
+  @Roles('admin', 'webmaster')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Pin a topic (admin/webmaster)' })
+  @ApiParam({ name: 'id', example: '33333333-3333-4333-8333-333333333333' })
+  @ApiOkResponse({
+    description: 'Pinned topic',
+    schema: {
+      example: {
+        id: '33333333-3333-4333-8333-333333333333',
+        forumId: '22222222-2222-4222-8222-222222222222',
+        authorCharacterId: '44444444-4444-4434-8444-444444444444',
+        title: 'Best starter?',
+        body: 'Which one do I pick?',
+        isPinned: true,
+        isLocked: false,
+        viewCount: 6,
+        replyCount: 0,
+        createdAt: '2026-10-16T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Admin or webmaster role required' })
+  @ApiNotFoundResponse({ description: 'Topic not found' })
+  async pinTopic(@Param('id') id: string) {
+    return this.topicsService.pinTopic(id);
   }
 }
