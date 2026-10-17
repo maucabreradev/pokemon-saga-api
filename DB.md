@@ -121,7 +121,7 @@ Characters, topics, posts, and users use soft deletes:
 `created_at` and `updated_at` use `defaultNow()`, which only applies on `INSERT`.
 Every `UPDATE` must set `updated_at: new Date()` explicitly — neither PostgreSQL
 nor Drizzle refreshes it automatically. (A schema-level `$onUpdate()` for all
-tables stays a deferred follow-up after Phase 3.)
+tables remains an open follow-up, with no phase assigned.)
 
 ## Connection Pooling
 
