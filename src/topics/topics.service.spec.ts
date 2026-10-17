@@ -888,4 +888,58 @@ describe('TopicsService', () => {
       expect(update).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('pinTopic', () => {
+    const lookupRow = () => ({ id: 'topic-id-1' });
+
+    const updatedRow = {
+      id: 'topic-id-1',
+      forumId: 'forum-id-1',
+      authorCharacterId: 'char-id-1',
+      title: 'Best starter?',
+      body: 'Which one do I pick?',
+      isPinned: true,
+      isLocked: false,
+      viewCount: 10,
+      replyCount: 5,
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+
+    function createPinDbMock(lookup: unknown[], updated: unknown = updatedRow) {
+      const select = jest.fn().mockImplementation(() => createChain(lookup));
+      const returning = jest.fn().mockResolvedValue([updated]);
+      const updateWhere = jest.fn().mockReturnValue({ returning });
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+      return { dbMock: { select, update }, updateSet, update };
+    }
+
+    it('should set isPinned to true and update updatedAt', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createPinDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.pinTopic('topic-id-1');
+
+      // Assert
+      const patch = updateSet.mock.calls[0][0] as Record<string, unknown>;
+      expect(patch.isPinned).toBe(true);
+      expect(patch.updatedAt).toBeInstanceOf(Date);
+      expect(result).toEqual(updatedRow);
+    });
+
+    it('should throw NotFoundError when the topic does not exist', async () => {
+      // Arrange
+      const { dbMock, update } = createPinDbMock([]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.pinTopic('topic-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(update).not.toHaveBeenCalled();
+    });
+  });
 });

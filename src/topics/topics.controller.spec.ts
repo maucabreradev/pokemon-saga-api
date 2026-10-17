@@ -129,4 +129,23 @@ describe('TopicsController', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe('pinTopic', () => {
+    it('should delegate the pin with the topic id', async () => {
+      // Arrange
+      const updated = { id: 'topic-id-1', isPinned: true };
+      const serviceMock = { pinTopic: jest.fn().mockResolvedValue(updated) };
+      const controller = new TopicsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.pinTopic('topic-id-1');
+
+      // Assert
+      expect(serviceMock.pinTopic).toHaveBeenCalledWith('topic-id-1');
+      expect(result).toBe(updated);
+    });
+  });
 });
