@@ -508,4 +508,37 @@ export class TopicsService {
 
     return updated;
   }
+
+  async lockTopic(id: string): Promise<UpdatedTopic> {
+    const [topic] = await this.db
+      .select({ id: topics.id })
+      .from(topics)
+      .where(and(eq(topics.id, id), eq(topics.isDeleted, false), isNull(topics.deletedAt)))
+      .limit(1);
+
+    if (!topic) {
+      throw new NotFoundError('Topic', id);
+    }
+
+    const now = new Date();
+
+    const [updated] = await this.db
+      .update(topics)
+      .set({ isLocked: true, updatedAt: now })
+      .where(eq(topics.id, id))
+      .returning({
+        id: topics.id,
+        forumId: topics.forumId,
+        authorCharacterId: topics.authorCharacterId,
+        title: topics.title,
+        body: topics.body,
+        isPinned: topics.isPinned,
+        isLocked: topics.isLocked,
+        viewCount: topics.viewCount,
+        replyCount: topics.replyCount,
+        createdAt: topics.createdAt,
+      });
+
+    return updated;
+  }
 }

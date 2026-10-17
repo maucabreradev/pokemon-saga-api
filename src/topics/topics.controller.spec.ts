@@ -148,4 +148,23 @@ describe('TopicsController', () => {
       expect(result).toBe(updated);
     });
   });
+
+  describe('lockTopic', () => {
+    it('should delegate the lock with the topic id', async () => {
+      // Arrange
+      const updated = { id: 'topic-id-1', isLocked: true };
+      const serviceMock = { lockTopic: jest.fn().mockResolvedValue(updated) };
+      const controller = new TopicsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.lockTopic('topic-id-1');
+
+      // Assert
+      expect(serviceMock.lockTopic).toHaveBeenCalledWith('topic-id-1');
+      expect(result).toBe(updated);
+    });
+  });
 });
