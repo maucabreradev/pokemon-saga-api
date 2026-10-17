@@ -761,4 +761,131 @@ describe('TopicsService', () => {
       expect(result).toEqual(updatedRow);
     });
   });
+
+  describe('deleteTopic', () => {
+    const lookupRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'topic-id-1',
+      isLocked: false,
+      authorUserId: 'user-id-1',
+      authorStatus: 'active',
+      authorDeletedAt: null as Date | null,
+      isDeleted: false,
+      deletedAt: null as Date | null,
+      ...overrides,
+    });
+
+    function createDeleteDbMock(lookup: unknown[]) {
+      const select = jest.fn().mockImplementation(() => createChain(lookup));
+      const updateWhere = jest.fn().mockResolvedValue([]);
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+      return { dbMock: { select, update }, updateSet, update };
+    }
+
+    it('should soft delete the topic for the author', async () => {
+      // Arrange
+      const { dbMock, updateSet, update } = createDeleteDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deleteTopic('topic-id-1', 'user-id-1', 'user');
+
+      // Assert
+      const patch = updateSet.mock.calls[0][0] as Record<string, unknown>;
+      expect(patch.isDeleted).toBe(true);
+      expect(patch.deletedAt).toBeInstanceOf(Date);
+      expect(patch.updatedAt).toBeInstanceOf(Date);
+      expect(update).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw NotFoundError when the topic does not exist', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.deleteTopic('topic-id-1', 'user-id-1', 'user');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should be idempotent (no write) when the topic is already deleted', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([
+        lookupRow({ isDeleted: true, deletedAt: new Date() }),
+      ]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deleteTopic('topic-id-1', 'user-id-1', 'user');
+
+      // Assert
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the caller is neither the author nor staff', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.deleteTopic('topic-id-1', 'user-id-1', 'user');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the author character is not active', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ authorStatus: 'banned' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.deleteTopic('topic-id-1', 'user-id-1', 'user');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should allow staff to delete a topic authored by someone else', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deleteTopic('topic-id-1', 'staff-user-id', 'admin');
+
+      // Assert
+      expect(update).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw ForbiddenError when the topic is locked and the caller is the author', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ isLocked: true })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.deleteTopic('topic-id-1', 'user-id-1', 'user');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should allow staff to delete a locked topic', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ isLocked: true })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deleteTopic('topic-id-1', 'staff-user-id', 'webmaster');
+
+      // Assert
+      expect(update).toHaveBeenCalledTimes(1);
+    });
+  });
 });
