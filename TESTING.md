@@ -41,7 +41,7 @@ Testing is structured in three layers: unit tests, integration tests, and end-to
 │    (supertest + test DB)            │
 ├─────────────────────────────────────┤
 │      Integration Tests              │  ← Service + DB interaction
-│    (test containers)                │
+│    (test DB via URL)                │
 ├─────────────────────────────────────┤
 │         Unit Tests                  │  ← Isolated functions/classes
 │    (jest mocks)                     │
@@ -75,7 +75,8 @@ describe('AuthService', () => {
 
 ## Integration Tests
 
-- **Location**: `tests/integration/`
+- **Location**: `tests/integration/` (directory lands in Phase 9 — no suites yet, so
+  `pnpm test:integration` currently passes vacuously)
 - **Purpose**: Verify service + database interaction
 - **Database**: Dedicated test database (separate from dev/prod)
 - **Setup**: Run migrations before tests, truncate tables between tests
@@ -152,15 +153,22 @@ Never set `transformIgnorePatterns: []` globally: transforming all of
 - Required checks must be green: Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement.
 - `Coverage (informational)` failing is expected until Phase 9 completes (see `State.md`) — it does not block merges.
 - When a required check fails, start from the job log: the first error block (exact file path, worker crash vs assertion vs timeout) determines the fix. A locally green suite plus CI red means environment difference (Node version, resources) — check `AGENTS.md` → Runtime first.
+- Jest writes its entire report to **stderr**, not stdout, and may print a `worker failed to exit
+  gracefully` warning. Neither one changes the exit code: trust the exit code, not the presence
+  of stderr output.
 
 ## Test Commands in CI
 
-```yaml
-# GitHub Actions example
-- run: pnpm install
-- run: pnpm db:generate
-- run: pnpm test
-- run: pnpm test:e2e
+These run in `.github/workflows/ci.yml` (jobs: Lint, Unit Tests, Integration & E2E).
+`Coverage (informational)` runs `pnpm test:cov` separately and does not block merges.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm test
+pnpm db:migrate        # against the postgres:16-alpine service container
+pnpm test:integration
+pnpm test:e2e
 ```
 
 ## Test Data
@@ -168,4 +176,4 @@ Never set `transformIgnorePatterns: []` globally: transforming all of
 - Use factories (not fixtures) for generating test data
 - Each test creates and cleans up its own data
 - Never depend on execution order
-- Use `faker` library for realistic fake data
+- No `faker` dependency: write explicit object literals inline (assertions compare against known values)

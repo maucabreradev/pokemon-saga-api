@@ -4,8 +4,12 @@ All endpoints are prefixed with `/api/v1`. Interactive documentation is availabl
 
 ## Implementation Status
 
-- Implemented: Auth, Users, Characters, Forums, Health (Phase 1-4).
-- Planned (spec only, not yet implemented): Topics, Posts, Friendships, Reactions, Moderation, Admin (Phase 5+). Swagger UI reflects only implemented routes.
+- Fully implemented: Auth, Users, Characters, Forums, Health (Phases 1-4).
+- Partially implemented: Topics (Phase 5 in progress) — live routes: `GET /topics`,
+  `GET /topics/:id`, `POST /topics`. The remaining rows in the Topics table are spec only.
+- Planned (spec only, not yet implemented): Posts, Friendships, Reactions, Moderation, Admin
+  (Phase 6+). The module tables below describe the full target contract, not the current state.
+  Swagger UI reflects only implemented routes.
 
 ## Authentication
 

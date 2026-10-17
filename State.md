@@ -1,16 +1,19 @@
 # Project State
 
-**Last updated**: 2026-10-16
+**Last updated**: 2026-10-17
 **Current phase**: Phase 5 in progress — Topics (TASK-050 complete, next TASK-051 edit topic)
 
-## Verification (2026-10-16, branch feature/task-050-create-topic)
+## Verification (2026-10-17, branch feature/fix-004-doc-debt)
 
-- `pnpm test`: 38 suites / 324 tests pass (exit 1 is the known worker force-exit teardown warning)
-- `pnpm test:e2e`: 2 suites / 3 tests pass (health + auth rate-limit 429 path)
-- `pnpm test:integration`: vacuous pass (no suites yet, config parses)
-- `pnpm lint`: clean (exit 0)
-- `pnpm exec tsc --noEmit`: clean (exit 0)
-- `pnpm db:generate`: No schema changes, nothing to migrate
+- `pnpm test`: 38 suites / 324 tests pass, exit 0, ~35s. Jest writes its report to stderr and
+  prints a `worker failed to exit gracefully` warning (a leaked handle/timer in some suite) —
+  cosmetic, it does not change the exit code; hunt it in TASK-081 with `--detectOpenHandles`
+- `pnpm test:e2e`: 2 suites / 3 tests pass, exit 0, ~54s (health + auth rate-limit 429 path)
+- `pnpm test:integration`: exit 0, no suites yet ("No tests found, exiting with code 0")
+- `pnpm lint`: clean, exit 0
+- `pnpm exec tsc --noEmit`: clean, exit 0
+- `pnpm db:generate`: exit 0, "No schema changes, nothing to migrate"
+- `git diff --stat develop...HEAD -- src/ tests/`: empty (documentation-only change)
 
 ## Current Status
 
@@ -25,6 +28,7 @@ Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.cre
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-17 | FIX-004 | Documentation debt: API.md implementation status (Topics partially live), README tree + phantom `db:seed`, TESTING.md faker/CI commands/stderr note, DB.md phase anchor, AGENTS.md + BRANCH_PROTECTION.md PR flow, State.md verification block; docs-only, no migration |
 | 2026-10-16 | TASK-050 | POST /topics via createTopic (main-first author, visibility/lock guards, sanitize-html + ADR-015); unit, e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-049 | GET /topics/:id via getTopicDetail (visibility-checked, viewCount increment, flat ASC posts + parentPostId); 305/305 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-048 | GET /topics via TopicsService.listTopics (guest public-only + 404 mask, forum/author filters, 3 sorts, pagination metadata, limit 50); 295/295 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
@@ -114,3 +118,6 @@ Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.cre
 - Git workflow: feature branch → squash merge → develop → delete feature branch
 - Users soft-delete shape decided (ADR-013): nullable `deleted_at` added via migration `0002` (additive, applied cleanly in a test transaction with rollback); application-level cascade + `deleted_at IS NULL` filters land in TASK-028; deleted emails stay reserved
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches
+- Workflow reality, recorded in FIX-004: feature branch → push → PR into `develop` → squash merge from the GitHub UI (the UI deletes the branch). The PR *title* becomes the squash subject and the PR *body* the commit body, so both must be written as the final commit. `AGENTS.md` and `BRANCH_PROTECTION.md` now match this
+- Jest leaks a handle in some suite (`worker failed to exit gracefully`, printed to stderr); `pnpm test` still exits 0 — investigate with `pnpm test --detectOpenHandles` during TASK-081
+- Jest writes its whole report to stderr: never read a merged stream (`2>&1`) as a failure, and never read `%ERRORLEVEL%` from a single-line `cmd /c "a & echo %ERRORLEVEL%"` (it expands at parse time and reports the *previous* value)
