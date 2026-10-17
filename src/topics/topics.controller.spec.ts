@@ -10,6 +10,7 @@ jest.mock('@nestjs/swagger', () => ({
   ApiQuery: () => () => undefined,
   ApiCreatedResponse: () => () => undefined,
   ApiBadRequestResponse: () => () => undefined,
+  ApiBearerAuth: () => () => undefined,
   ApiUnauthorizedResponse: () => () => undefined,
 }));
 
@@ -87,6 +88,26 @@ describe('TopicsController', () => {
       // Assert
       expect(serviceMock.createTopic).toHaveBeenCalledWith(dto, userId);
       expect(result).toBe(created);
+    });
+  });
+
+  describe('updateTopic', () => {
+    it('should delegate the edit with the topic id, user, role and dto', async () => {
+      // Arrange
+      const dto = { title: 'Updated title' };
+      const updated = { id: 'topic-id-1', title: 'Updated title' };
+      const serviceMock = { updateTopic: jest.fn().mockResolvedValue(updated) };
+      const controller = new TopicsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.updateTopic('topic-id-1', 'user-id-1', 'admin', dto);
+
+      // Assert
+      expect(serviceMock.updateTopic).toHaveBeenCalledWith('topic-id-1', 'user-id-1', 'admin', dto);
+      expect(result).toBe(updated);
     });
   });
 });

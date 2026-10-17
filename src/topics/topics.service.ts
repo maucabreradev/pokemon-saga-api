@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { SQL, and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { UserRole } from '../auth/decorators/roles.decorator';
 import { ForbiddenError, NotFoundError, ValidationError } from '../common/exceptions/app-errors';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { sanitizeHtml } from '../common/utils/sanitize-html';
@@ -11,6 +12,7 @@ import { topics } from '../database/schema/topics';
 import { ForumsService } from '../forums/forums.service';
 import { CreateTopicDto } from './dto/create-topic.dto';
 import { ListTopicsQueryDto } from './dto/list-topics-query.dto';
+import { UpdateTopicDto } from './dto/update-topic.dto';
 
 export interface TopicListItem {
   id: string;
@@ -79,6 +81,10 @@ export interface CreatedTopic {
   replyCount: number;
   createdAt: Date;
 }
+
+// An edit returns the same projection createTopic already returns, so the
+// response shape stays identical between creating and editing a topic.
+export type UpdatedTopic = CreatedTopic;
 
 const MAX_LIMIT = 50;
 
@@ -321,5 +327,102 @@ export class TopicsService {
       });
 
     return created;
+  }
+
+  async updateTopic(
+    id: string,
+    userId: string,
+    userRole: UserRole,
+    dto: UpdateTopicDto,
+  ): Promise<UpdatedTopic> {
+    // Topics are authored by a character, so that character carries ownership:
+    // the edit is allowed when it belongs to the caller and is still active.
+    const [topic] = await this.db
+      .select({
+        id: topics.id,
+        title: topics.title,
+        body: topics.body,
+        forumId: topics.forumId,
+        authorCharacterId: topics.authorCharacterId,
+        authorUserId: characters.userId,
+        authorStatus: characters.status,
+        authorDeletedAt: characters.deletedAt,
+        isPinned: topics.isPinned,
+        isLocked: topics.isLocked,
+        viewCount: topics.viewCount,
+        replyCount: topics.replyCount,
+        createdAt: topics.createdAt,
+      })
+      .from(topics)
+      .innerJoin(characters, eq(topics.authorCharacterId, characters.id))
+      .where(and(eq(topics.id, id), eq(topics.isDeleted, false), isNull(topics.deletedAt)))
+      .limit(1);
+
+    if (!topic) {
+      throw new NotFoundError('Topic', id);
+    }
+
+    const isStaff = userRole === 'admin' || userRole === 'webmaster';
+    const isActiveAuthor =
+      topic.authorUserId === userId &&
+      topic.authorStatus === 'active' &&
+      topic.authorDeletedAt === null;
+
+    if (!isActiveAuthor && !isStaff) {
+      throw new ForbiddenError('You do not own this topic');
+    }
+
+    // A lock freezes the topic for everyone but staff, who still moderate it.
+    if (topic.isLocked && !isStaff) {
+      throw new ForbiddenError('This topic is locked');
+    }
+
+    const current: UpdatedTopic = {
+      id: topic.id,
+      forumId: topic.forumId,
+      authorCharacterId: topic.authorCharacterId,
+      title: topic.title,
+      body: topic.body,
+      isPinned: topic.isPinned,
+      isLocked: topic.isLocked,
+      viewCount: topic.viewCount,
+      replyCount: topic.replyCount,
+      createdAt: topic.createdAt,
+    };
+
+    // PATCH with no fields is a no-op that reports the current state, matching
+    // the convention already used by updateForum and updateProfile.
+    if (dto.title === undefined && dto.body === undefined) {
+      return current;
+    }
+
+    const body = dto.body !== undefined ? sanitizeHtml(dto.body) : undefined;
+
+    if (body !== undefined && body.trim().length === 0) {
+      throw new ValidationError('Topic body must not be empty');
+    }
+
+    const [updated] = await this.db
+      .update(topics)
+      .set({
+        ...(dto.title !== undefined ? { title: dto.title } : {}),
+        ...(body !== undefined ? { body } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(topics.id, id))
+      .returning({
+        id: topics.id,
+        forumId: topics.forumId,
+        authorCharacterId: topics.authorCharacterId,
+        title: topics.title,
+        body: topics.body,
+        isPinned: topics.isPinned,
+        isLocked: topics.isLocked,
+        viewCount: topics.viewCount,
+        replyCount: topics.replyCount,
+        createdAt: topics.createdAt,
+      });
+
+    return updated;
   }
 }
