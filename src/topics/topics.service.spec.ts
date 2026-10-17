@@ -942,4 +942,58 @@ describe('TopicsService', () => {
       expect(update).not.toHaveBeenCalled();
     });
   });
+
+  describe('lockTopic', () => {
+    const lookupRow = () => ({ id: 'topic-id-1' });
+
+    const updatedRow = {
+      id: 'topic-id-1',
+      forumId: 'forum-id-1',
+      authorCharacterId: 'char-id-1',
+      title: 'Best starter?',
+      body: 'Which one do I pick?',
+      isPinned: false,
+      isLocked: true,
+      viewCount: 10,
+      replyCount: 5,
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+
+    function createLockDbMock(lookup: unknown[], updated: unknown = updatedRow) {
+      const select = jest.fn().mockImplementation(() => createChain(lookup));
+      const returning = jest.fn().mockResolvedValue([updated]);
+      const updateWhere = jest.fn().mockReturnValue({ returning });
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+      return { dbMock: { select, update }, updateSet, update };
+    }
+
+    it('should set isLocked to true and update updatedAt', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createLockDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.lockTopic('topic-id-1');
+
+      // Assert
+      const patch = updateSet.mock.calls[0][0] as Record<string, unknown>;
+      expect(patch.isLocked).toBe(true);
+      expect(patch.updatedAt).toBeInstanceOf(Date);
+      expect(result).toEqual(updatedRow);
+    });
+
+    it('should throw NotFoundError when the topic does not exist', async () => {
+      // Arrange
+      const { dbMock, update } = createLockDbMock([]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.lockTopic('topic-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(update).not.toHaveBeenCalled();
+    });
+  });
 });

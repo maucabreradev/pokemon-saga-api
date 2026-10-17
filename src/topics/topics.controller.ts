@@ -220,4 +220,33 @@ export class TopicsController {
   async pinTopic(@Param('id') id: string) {
     return this.topicsService.pinTopic(id);
   }
+
+  @Patch(':id/lock')
+  @Roles('admin', 'webmaster')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lock a topic (admin/webmaster)' })
+  @ApiParam({ name: 'id', example: '33333333-3333-4333-8333-333333333333' })
+  @ApiOkResponse({
+    description: 'Locked topic',
+    schema: {
+      example: {
+        id: '33333333-3333-4333-8333-333333333333',
+        forumId: '22222222-2222-4222-8222-222222222222',
+        authorCharacterId: '44444444-4444-4434-8444-444444444444',
+        title: 'Best starter?',
+        body: 'Which one do I pick?',
+        isPinned: false,
+        isLocked: true,
+        viewCount: 6,
+        replyCount: 0,
+        createdAt: '2026-10-16T00:00:00.000Z',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Admin or webmaster role required' })
+  @ApiNotFoundResponse({ description: 'Topic not found' })
+  async lockTopic(@Param('id') id: string) {
+    return this.topicsService.lockTopic(id);
+  }
 }
