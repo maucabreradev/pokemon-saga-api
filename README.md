@@ -15,7 +15,7 @@ A REST API for an online role-playing forum set in the Pokémon universe. Users 
 ## Prerequisites
 
 - Node.js 20 (pinned in CI and Docker — dev must match; newer local Node hides incompatibilities)
-- pnpm >= 9
+- pnpm 12.3.4 (pinned in `package.json` → `packageManager`)
 - Docker & Docker Compose
 
 ## Quick Start
@@ -43,11 +43,19 @@ The API will be available at `http://localhost:3000` and Swagger docs at `http:/
 
 ```
 src/
-├── modules/          # Feature modules (auth, users, characters, forums, ...)
-├── database/         # Drizzle config, schema, migrations, seeds
-├── common/           # Shared utilities (guards, interceptors, filters, pipes)
+├── auth/             # JWT auth, guards, roles decorator
+├── users/            # Account endpoints
+├── characters/       # Character profiles
+├── forums/           # Categories, forums, visibility rules
+├── topics/           # Topics (Phase 5, in progress)
+├── health/           # Health check
+├── database/         # Drizzle schema + migrations (seeds: Phase 11, ADR-007)
+├── common/           # Shared DTOs, exceptions, filters, pipes, utils
 ├── config/           # Environment configuration
 └── main.ts           # Application entry point
+
+tests/
+└── e2e/              # Full HTTP lifecycle (supertest); integration/ lands in Phase 9
 ```
 
 ## Documentation
@@ -70,8 +78,9 @@ src/
 | `pnpm db:generate` | Generate Drizzle migrations from schema |
 | `pnpm db:migrate` | Run database migrations |
 | `pnpm db:push` | Push schema changes directly (dev only) |
-| `pnpm db:seed` | Seed database with initial data |
 | `pnpm test` | Run unit tests |
+| `pnpm test:integration` | Run integration tests (no suites yet — Phase 9) |
+| `pnpm test:cov` | Run unit tests with coverage |
 | `pnpm test:e2e` | Run end-to-end tests |
 | `pnpm lint` | Run ESLint |
 | `pnpm format` | Format code with Prettier |
