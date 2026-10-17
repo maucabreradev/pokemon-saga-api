@@ -6,7 +6,7 @@
 |------|--------|
 | `main` | Production — **NEVER** push, merge, or modify directly |
 | `develop` | Integration branch — stable, always deployable |
-| `feature/[tarea]` | One branch per task, deleted after squash merge |
+| `feature/[tarea]` | One branch per task, opened as a PR into `develop`, deleted after squash merge |
 
 ## Workflow
 
@@ -20,26 +20,28 @@ git checkout -b feature/auth-jwt-implementation
 git commit -m "feat(auth): add JWT access token generation"
 git commit -m "fix(auth): handle expired refresh token edge case"
 
-# 3. Task complete — squash merge to develop
+# 3. Task complete — push the branch and open a PR into develop
+git push -u origin feature/auth-jwt-implementation
+# Open the PR in the GitHub UI (or: gh pr create --base develop)
+
+# 4. The PR title becomes the squash subject and the PR body becomes the
+#    commit body, so write them as the final commit you want on develop:
+#
+#    feat(auth): implement JWT authentication with refresh tokens
+#
+#    - Add login endpoint with access + refresh token pair
+#    - Implement refresh token rotation (30-day expiry, hashed storage)
+#    - Add logout (single session) and logout-all endpoints
+#    - Add global guard for protected routes
+#    - Add rate limiting on auth endpoints
+#
+#    Closes: AUTH-001
+
+# 5. Wait for the required checks, squash merge from the GitHub UI,
+#    let the UI delete the branch, then sync locally
 git checkout develop
 git pull origin develop
-git merge --squash feature/auth-jwt-implementation
-
-# 4. Commit on develop with detailed message
-git commit -m "feat(auth): implement JWT authentication with refresh tokens
-
-- Add login endpoint with access + refresh token pair
-- Implement refresh token rotation (30-day expiry, hashed storage)
-- Add logout (single session) and logout-all endpoints
-- Add global guard for protected routes
-- Add rate limiting on auth endpoints
-
-Closes: AUTH-001"
-
-# 5. Push and clean up
-git push origin develop
-git branch -d feature/auth-jwt-implementation
-git push origin --delete feature/auth-jwt-implementation
+git fetch --prune
 ```
 
 ## Conventional Commits Format
@@ -158,7 +160,7 @@ Example commit: `chore(tasks): mark TASK-014 as completed and update project sta
 
 1. **NEVER** modify `main` — no merges, no pushes, no PRs directly to main
 2. **One task = one feature branch** — no mixing unrelated work
-3. **Squash merge only** — no merge commits to develop
+3. **Squash merge only** — no merge commits to develop (PR into `develop`, squash merged from the GitHub UI)
 4. **Delete feature branches** after successful squash merge
 5. **Atomic commits** — each commit is a coherent, logical change
 6. **Contextual messages** — explain *why*, not just *what*

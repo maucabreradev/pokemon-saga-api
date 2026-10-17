@@ -40,7 +40,7 @@ Apply in GitHub: Settings > Branches > Add branch protection rule > Branch name 
 ## Workflow Reminder
 
 See `AGENTS.md` for the full workflow: feature branch from `develop`,
-atomic conventional commits, squash merge into `develop`, push `develop`,
+atomic conventional commits, pull request into `develop`, squash merge from the GitHub UI,
 delete the feature branch. `TASKS.md` and `State.md` are updated on every task.
 CI runs on `push` and `pull_request` for both `main` and `develop`
 (see `.github/workflows/ci.yml`).
