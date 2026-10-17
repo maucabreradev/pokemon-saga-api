@@ -540,4 +540,225 @@ describe('TopicsService', () => {
       expect(insert).not.toHaveBeenCalled();
     });
   });
+
+  describe('updateTopic', () => {
+    const dto = { title: 'Updated title', body: 'Updated body' };
+
+    const updatedRow = {
+      id: 'topic-id-1',
+      forumId: 'forum-id-1',
+      authorCharacterId: 'char-id-1',
+      title: 'Updated title',
+      body: 'Updated body',
+      isPinned: false,
+      isLocked: false,
+      viewCount: 10,
+      replyCount: 5,
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+
+    // The lookup joins topics with the author character to resolve ownership.
+    const lookupRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'topic-id-1',
+      title: 'Best starter?',
+      body: 'Which one do I pick?',
+      forumId: 'forum-id-1',
+      authorCharacterId: 'char-id-1',
+      authorUserId: 'user-id-1',
+      authorStatus: 'active',
+      authorDeletedAt: null as Date | null,
+      isPinned: false,
+      isLocked: false,
+      viewCount: 10,
+      replyCount: 5,
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+      ...overrides,
+    });
+
+    const currentRow = {
+      id: 'topic-id-1',
+      title: 'Best starter?',
+      body: 'Which one do I pick?',
+      forumId: 'forum-id-1',
+      authorCharacterId: 'char-id-1',
+      isPinned: false,
+      isLocked: false,
+      viewCount: 10,
+      replyCount: 5,
+      createdAt: new Date('2026-10-15T00:00:00.000Z'),
+    };
+
+    function createUpdateDbMock(lookup: unknown[], updated: unknown = updatedRow) {
+      const select = jest.fn().mockImplementation(() => createChain(lookup));
+      const returning = jest.fn().mockResolvedValue([updated]);
+      const updateWhere = jest.fn().mockReturnValue({ returning });
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+      return { dbMock: { select, update }, updateSet, update };
+    }
+
+    function patchOf(updateSet: jest.Mock): Record<string, unknown> {
+      return updateSet.mock.calls[0][0] as Record<string, unknown>;
+    }
+
+    it('should update the title and body for the author', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.updateTopic('topic-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      expect(patchOf(updateSet)).toEqual(
+        expect.objectContaining({ title: 'Updated title', body: 'Updated body' }),
+      );
+      expect(result).toEqual(updatedRow);
+    });
+
+    it('should set updatedAt explicitly, since PostgreSQL does not refresh it', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.updateTopic('topic-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      expect(patchOf(updateSet).updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should store the sanitized body', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.updateTopic('topic-id-1', 'user-id-1', 'user', {
+        body: '<script>alert("xss")</script><p>Hello</p>',
+      });
+
+      // Assert
+      const stored = patchOf(updateSet).body as string;
+      expect(stored).not.toContain('<script>');
+      expect(stored).toContain('Hello');
+    });
+
+    it('should throw ValidationError when the sanitized body is empty', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updateTopic('topic-id-1', 'user-id-1', 'user', {
+        body: '<script>alert("xss")</script>',
+      });
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ValidationError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should update only the fields that were provided', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.updateTopic('topic-id-1', 'user-id-1', 'user', { title: 'Renamed' });
+
+      // Assert
+      expect(patchOf(updateSet)).toHaveProperty('title', 'Renamed');
+      expect(patchOf(updateSet)).not.toHaveProperty('body');
+    });
+
+    it('should return the current topic without writing when no fields are provided', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.updateTopic('topic-id-1', 'user-id-1', 'user', {});
+
+      // Assert
+      expect(update).not.toHaveBeenCalled();
+      expect(result).toEqual(currentRow);
+    });
+
+    it('should throw NotFoundError when the topic does not exist', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updateTopic('topic-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the caller is neither the author nor staff', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updateTopic('topic-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the author character is not active', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow({ authorStatus: 'banned' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updateTopic('topic-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should allow staff to edit a topic authored by someone else', async () => {
+      // Arrange
+      const { dbMock } = createUpdateDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.updateTopic('topic-id-1', 'staff-user-id', 'admin', dto);
+
+      // Assert
+      expect(result).toEqual(updatedRow);
+    });
+
+    it('should throw ForbiddenError when the topic is locked and the caller is the author', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow({ isLocked: true })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updateTopic('topic-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should allow staff to edit a locked topic', async () => {
+      // Arrange
+      const { dbMock } = createUpdateDbMock([lookupRow({ isLocked: true })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.updateTopic('topic-id-1', 'staff-user-id', 'webmaster', dto);
+
+      // Assert
+      expect(result).toEqual(updatedRow);
+    });
+  });
 });

@@ -227,3 +227,19 @@
 - No ESM-in-`node_modules` problem remains: zero transform config changes, suite times back to baseline
 - `sanitize-html` defaults apply (script/style stripped, event handlers stripped, safe formatting kept); TASK-059 reuses and tunes the allowlist for post bodies if needed
 - If a future requirement truly needs DOMPurify semantics, the migration path is upgrading runtime Node across Dockerfile + CI first — never while pinned to Node 20
+
+---
+
+## ADR-016: Edit Authorization for User Content (Author Character or Staff)
+
+**Status**: Accepted
+
+**Context**: TASK-051 is the first endpoint where a user mutates *existing* user-generated content (`PATCH /topics/:id`), and TASK-052–058 (topic delete/pin/lock, post edit/delete) all repeat the same question: who may change content, and how is "who wrote this" resolved? Topics are not linked to `users` directly — they carry `author_character_id` (ADR-005), so ownership has to be derived through the author character. The plan states the rule as "author or mod/admin", plus "locked topics are staff-only".
+
+**Decision**: Resolve authorship by joining the topic with its author character (`topics.author_character_id → characters.id`) and comparing `characters.user_id` against the token's `sub`. The caller may edit when that character is theirs *and* still active (`status = 'active'`, `deleted_at IS NULL`); otherwise the caller must be staff (`admin` or `webmaster` — the role enum has no `mod`). A locked topic is editable by staff only. Authorization lives in the service (inline, like `deleteCharacter`), not in a `@Roles()` guard, because the rule is "author OR staff" and a guard can only express "staff only". The edit does **not** re-check forum visibility: the author is not placing new content into a forum, and gating on the forum's *current* visibility would lock authors out of their own topics after staff restrict a forum.
+
+**Consequences**:
+- A banned or soft-deleted author character loses the right to edit its own content while staff keep it, so bans stay enforced without touching the content itself
+- `PATCH` with no provided fields is an idempotent no-op that returns the current state (same convention as `updateForum`/`updateProfile`), so partial-update callers never special-case an empty body
+- Post edit/delete (TASK-057/058) and topic delete (TASK-052) reuse this shape; pin/lock (TASK-053/054) are staff-only and can use `@Roles()` instead of the inline check
+- The author-character join is the single source of ownership, so content edits never trust a client-supplied character id

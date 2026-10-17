@@ -1,11 +1,11 @@
 # Project State
 
 **Last updated**: 2026-10-17
-**Current phase**: Phase 5 in progress — Topics (TASK-050 complete, next TASK-051 edit topic)
+**Current phase**: Phase 5 in progress — Topics (TASK-051 complete, next TASK-052 delete topic)
 
-## Verification (2026-10-17, branch feature/fix-004-doc-debt)
+## Verification (2026-10-17, branch feature/task-051-edit-topic)
 
-- `pnpm test`: 38 suites / 324 tests pass, exit 0, ~35s. Jest writes its report to stderr and
+- `pnpm test`: 39 suites / 343 tests pass, exit 0, ~35s. Jest writes its report to stderr and
   prints a `worker failed to exit gracefully` warning (a leaked handle/timer in some suite) —
   cosmetic, it does not change the exit code; hunt it in TASK-081 with `--detectOpenHandles`
 - `pnpm test:e2e`: 2 suites / 3 tests pass, exit 0, ~54s (health + auth rate-limit 429 path)
@@ -13,14 +13,15 @@
 - `pnpm lint`: clean, exit 0
 - `pnpm exec tsc --noEmit`: clean, exit 0
 - `pnpm db:generate`: exit 0, "No schema changes, nothing to migrate"
-- `git diff --stat develop...HEAD -- src/ tests/`: empty (documentation-only change)
+- git status: 8 modified + 2 untracked files (TASK-051 code + docs); commits pending rescue
 
 ## Current Status
 
-Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.createTopic: main-first active character authors (403 without), assertForumAccess (404/403), locked forums rejected (403), body sanitized via shared sanitizeHtml util (400 when empty after sanitize), single insert, 201 response. Sanitizer is sanitize-html (ADR-015 superseded ADR-014: the DOMPurify/jsdom chain crashed at runtime on Node 20 in CI and prod). No topic_count counter and no migration per plan (counts stay computed). Next is TASK-051 (PATCH /topics/:id, Phase 5).
+Phase 5 is in progress. TASK-051 (PATCH /topics/:id) implemented as TopicsService.updateTopic: the topic lookup joins the author character to resolve ownership, so the caller may edit when that character belongs to them and is still active (banned/deleted author character → 403), or when the JWT role is admin/webmaster; a locked topic is staff-only (403 for the author); the body is sanitized through the shared sanitizeHtml util (400 when empty after sanitize); the update is partial and a PATCH with no fields returns the current topic without writing (the `updateForum`/`updateProfile` no-op convention); `updatedAt` is set explicitly per DB.md. No forum-visibility check on edit, on purpose: the author is not placing new content into a forum, and gating on the forum's current visibility would lock authors out of their own topics if staff later restricts the forum. No migration (no schema change). Next is TASK-052 (DELETE /topics/:id, Phase 5).
 
 ## Last Completed
 
+- **TASK-051** — Implement PATCH /topics/:id via updateTopic (author-or-staff ownership resolved by joining the author character, banned/deleted author 403, locked topics staff-only, partial sanitized body, no-op returns current, explicit updatedAt); unit, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-050** — Implement POST /topics via createTopic (auth + active character, visibility/lock guards, DOMPurify sanitize, 201); 324/324 unit, 3/3 e2e, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-049** — Implement GET /topics/:id via getTopicDetail (visibility-checked detail, viewCount increment, paginated ASC posts); 305/305 unit, 3/3 e2e, lint + tsc clean, no migration. Phase 5 in progress.
 
@@ -28,6 +29,7 @@ Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.cre
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-17 | TASK-051 | PATCH /topics/:id via updateTopic (author-or-staff via author-character join, banned author 403, locked staff-only, partial sanitized body, no-op returns current, explicit updatedAt); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | FIX-004 | Documentation debt: API.md implementation status (Topics partially live), README tree + phantom `db:seed`, TESTING.md faker/CI commands/stderr note, DB.md phase anchor, AGENTS.md + BRANCH_PROTECTION.md PR flow, State.md verification block; docs-only, no migration |
 | 2026-10-16 | TASK-050 | POST /topics via createTopic (main-first author, visibility/lock guards, sanitize-html + ADR-015); unit, e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-16 | TASK-049 | GET /topics/:id via getTopicDetail (visibility-checked, viewCount increment, flat ASC posts + parentPostId); 305/305 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
@@ -119,5 +121,6 @@ Phase 5 is in progress. TASK-050 (POST /topics) implemented as TopicsService.cre
 - Users soft-delete shape decided (ADR-013): nullable `deleted_at` added via migration `0002` (additive, applied cleanly in a test transaction with rollback); application-level cascade + `deleted_at IS NULL` filters land in TASK-028; deleted emails stay reserved
 - Branch protection (Option A manual): `main` requires PR + 1 approval with Code Owners review; `develop` requires PR with 0 approvals (solo developer cannot self-approve); both require up-to-date checks (Lint, Unit Tests, Integration & E2E, TDD & Migration Enforcement), linear history, include admins; `Coverage (informational)` is NOT required on either branch; CI triggers on both branches
 - Workflow reality, recorded in FIX-004: feature branch → push → PR into `develop` → squash merge from the GitHub UI (the UI deletes the branch). The PR *title* becomes the squash subject and the PR *body* the commit body, so both must be written as the final commit. `AGENTS.md` and `BRANCH_PROTECTION.md` now match this
+- Topic edit (TASK-051): ownership resolves through the author-character join (`topics.author_character_id → characters.user_id`), so a banned or deleted author character gets 403 while admin/webmaster bypass; locked topics are staff-only for edits; a PATCH with no fields is an idempotent no-op that returns the current topic; no forum-visibility check on edit by design (the author is not writing new content into a forum)
 - Jest leaks a handle in some suite (`worker failed to exit gracefully`, printed to stderr); `pnpm test` still exits 0 — investigate with `pnpm test --detectOpenHandles` during TASK-081
 - Jest writes its whole report to stderr: never read a merged stream (`2>&1`) as a failure, and never read `%ERRORLEVEL%` from a single-line `cmd /c "a & echo %ERRORLEVEL%"` (it expands at parse time and reports the *previous* value)
