@@ -6,7 +6,7 @@ All endpoints are prefixed with `/api/v1`. Interactive documentation is availabl
 
 - Fully implemented: Auth, Users, Characters, Forums, Health (Phases 1-4).
 - Partially implemented: Topics (Phase 5 in progress) — live routes: `GET /topics`,
-  `GET /topics/:id`, `POST /topics`, `PATCH /topics/:id`. The remaining rows in the Topics table
+  `GET /topics/:id`, `POST /topics`, `PATCH /topics/:id`, `DELETE /topics/:id`. The remaining rows in the Topics table
   are spec only.
 - Planned (spec only, not yet implemented): Posts, Friendships, Reactions, Moderation, Admin
   (Phase 6+). The module tables below describe the full target contract, not the current state.
