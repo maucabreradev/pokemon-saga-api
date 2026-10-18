@@ -41,6 +41,10 @@ Apply in GitHub: Settings > Branches > Add branch protection rule > Branch name 
 
 See `AGENTS.md` for the full workflow: feature branch from `develop`,
 atomic conventional commits, pull request into `develop`, squash merge from the GitHub UI,
-delete the feature branch. `TASKS.md` and `State.md` are updated on every task.
+delete the feature branch. `TASKS.md` and `State.md` are updated on every task,
+and the required check `TDD & Migration Enforcement` fails any PR that does not
+touch `State.md` (a `feature/task-NNN-*` branch must also flip its `TASKS.md`
+checkbox and mention the task in `State.md`). Keep the automatic `(#NN)` suffix
+in the squash subject so the commit stays linked to its PR.
 CI runs on `push` and `pull_request` for both `main` and `develop`
 (see `.github/workflows/ci.yml`).
