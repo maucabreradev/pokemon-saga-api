@@ -1,9 +1,20 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -105,5 +116,22 @@ export class PostsController {
     @Body() dto: UpdatePostDto,
   ) {
     return this.postsService.updatePost(id, userId, role, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Soft delete a post (author or staff)' })
+  @ApiParam({ name: 'id', example: '55555555-5555-4555-8555-555555555555' })
+  @ApiNoContentResponse({ description: 'Post soft deleted' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Not the author or staff, or inactive author character' })
+  @ApiNotFoundResponse({ description: 'Post not found' })
+  async deletePost(
+    @Param('id') id: string,
+    @CurrentUser('sub') userId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    await this.postsService.deletePost(id, userId, role);
   }
 }
