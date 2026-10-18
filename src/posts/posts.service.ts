@@ -290,4 +290,60 @@ export class PostsService {
 
     return updated;
   }
+
+  async deletePost(id: string, userId: string, userRole: UserRole): Promise<void> {
+    // Lookup without the deleted filters so we can distinguish "not found" from
+    // "already deleted" (idempotent 204), mirroring deleteTopic's shape.
+    const [post] = await this.db
+      .select({
+        id: posts.id,
+        topicId: posts.topicId,
+        authorUserId: characters.userId,
+        authorStatus: characters.status,
+        authorDeletedAt: characters.deletedAt,
+        isDeleted: posts.isDeleted,
+        deletedAt: posts.deletedAt,
+        topicReplyCount: topics.replyCount,
+      })
+      .from(posts)
+      .innerJoin(characters, eq(posts.authorCharacterId, characters.id))
+      .innerJoin(topics, eq(posts.topicId, topics.id))
+      .where(eq(posts.id, id))
+      .limit(1);
+
+    if (!post) {
+      throw new NotFoundError('Post', id);
+    }
+
+    // Already gone: idempotent 204, no write and no auth check.
+    if (post.isDeleted || post.deletedAt !== null) {
+      return;
+    }
+
+    const isStaff = userRole === 'admin' || userRole === 'webmaster';
+    const isActiveAuthor =
+      post.authorUserId === userId &&
+      post.authorStatus === 'active' &&
+      post.authorDeletedAt === null;
+
+    if (!isActiveAuthor && !isStaff) {
+      throw new ForbiddenError('You do not own this post');
+    }
+
+    // No locked-topic check: the spec omits it, matching updatePost (removing
+    // content is not writing a new reply into the thread).
+    const now = new Date();
+
+    await this.db
+      .update(posts)
+      .set({ isDeleted: true, deletedAt: now, updatedAt: now })
+      .where(eq(posts.id, id));
+
+    // The deleted post leaves the topic's denormalized reply count; clamped so
+    // historical drift cannot render a negative count.
+    await this.db
+      .update(topics)
+      .set({ replyCount: Math.max(0, post.topicReplyCount - 1), updatedAt: now })
+      .where(eq(topics.id, post.topicId));
+  }
 }

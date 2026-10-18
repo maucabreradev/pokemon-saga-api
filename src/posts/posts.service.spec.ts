@@ -571,4 +571,136 @@ describe('PostsService', () => {
       expect(result).toEqual(updatedRow);
     });
   });
+
+  describe('deletePost', () => {
+    // The lookup joins posts with the author character for ownership and with
+    // the topic for the denormalized reply count to decrement.
+    const lookupRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'post-id-1',
+      topicId: 'topic-id-1',
+      authorUserId: 'user-id-1',
+      authorStatus: 'active',
+      authorDeletedAt: null as Date | null,
+      isDeleted: false,
+      deletedAt: null as Date | null,
+      topicReplyCount: 5,
+      ...overrides,
+    });
+
+    function createDeleteDbMock(lookup: unknown[]) {
+      const select = jest.fn().mockImplementation(() => createChain(lookup));
+      const updateWhere = jest.fn().mockResolvedValue([]);
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+      return { dbMock: { select, update }, updateSet, update };
+    }
+
+    it('should soft delete the post for the author', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createDeleteDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deletePost('post-id-1', 'user-id-1', 'user');
+
+      // Assert
+      const patch = updateSet.mock.calls[0][0] as Record<string, unknown>;
+      expect(patch.isDeleted).toBe(true);
+      expect(patch.deletedAt).toBeInstanceOf(Date);
+      expect(patch.updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should decrement the topic reply count', async () => {
+      // Arrange
+      const { dbMock, updateSet, update } = createDeleteDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deletePost('post-id-1', 'user-id-1', 'user');
+
+      // Assert
+      expect(update).toHaveBeenCalledTimes(2);
+      const patch = updateSet.mock.calls[1][0] as Record<string, unknown>;
+      expect(patch.replyCount).toBe(4);
+      expect(patch.updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should not decrement the topic reply count below zero', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createDeleteDbMock([lookupRow({ topicReplyCount: 0 })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deletePost('post-id-1', 'user-id-1', 'user');
+
+      // Assert
+      const patch = updateSet.mock.calls[1][0] as Record<string, unknown>;
+      expect(patch.replyCount).toBe(0);
+    });
+
+    it('should throw NotFoundError when the post does not exist', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.deletePost('post-id-1', 'user-id-1', 'user');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should be idempotent (no write) when the post is already deleted', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([
+        lookupRow({ isDeleted: true, deletedAt: new Date() }),
+      ]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deletePost('post-id-1', 'user-id-1', 'user');
+
+      // Assert
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the caller is neither the author nor staff', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.deletePost('post-id-1', 'user-id-1', 'user');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the author character is not active', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ authorStatus: 'banned' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.deletePost('post-id-1', 'user-id-1', 'user');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should allow staff to delete a post authored by someone else', async () => {
+      // Arrange
+      const { dbMock, update } = createDeleteDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.deletePost('post-id-1', 'staff-user-id', 'admin');
+
+      // Assert
+      expect(update).toHaveBeenCalledTimes(2);
+    });
+  });
 });
