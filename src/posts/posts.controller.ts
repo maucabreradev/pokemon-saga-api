@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -13,7 +13,9 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { UserRole } from '../auth/decorators/roles.decorator';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { PostsService } from './posts.service';
 
 @ApiTags('Posts')
@@ -72,5 +74,36 @@ export class PostsController {
   @ApiNotFoundResponse({ description: 'Topic or parent post not found' })
   async createPost(@Body() dto: CreatePostDto, @CurrentUser('sub') userId: string) {
     return this.postsService.createPost(dto, userId);
+  }
+
+  @Patch(':id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Edit a post (author or staff)' })
+  @ApiParam({ name: 'id', example: '55555555-5555-4555-8555-555555555555' })
+  @ApiOkResponse({
+    description: 'Updated post',
+    schema: {
+      example: {
+        id: '55555555-5555-4555-8555-555555555555',
+        topicId: '33333333-3333-4333-8333-333333333333',
+        parentPostId: null,
+        authorCharacterId: '44444444-4444-4434-8444-444444444444',
+        body: 'I pick Squirtle.',
+        createdAt: '2026-10-17T00:00:00.000Z',
+        updatedAt: '2026-10-17T01:00:00.000Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  @ApiForbiddenResponse({ description: 'Not the author or staff, or inactive author character' })
+  @ApiNotFoundResponse({ description: 'Post not found' })
+  async updatePost(
+    @Param('id') id: string,
+    @CurrentUser('sub') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() dto: UpdatePostDto,
+  ) {
+    return this.postsService.updatePost(id, userId, role, dto);
   }
 }

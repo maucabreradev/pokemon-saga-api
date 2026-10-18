@@ -399,4 +399,176 @@ describe('PostsService', () => {
       expect(result.id).toBe('post-id-1');
     });
   });
+
+  describe('updatePost', () => {
+    const dto = { body: 'Updated reply.' };
+
+    const updatedRow = {
+      id: 'post-id-1',
+      topicId: 'topic-id-1',
+      parentPostId: null,
+      authorCharacterId: 'char-id-1',
+      body: 'Updated reply.',
+      createdAt: new Date('2026-10-17T00:00:00.000Z'),
+      updatedAt: new Date('2026-10-17T00:00:00.000Z'),
+    };
+
+    // The lookup joins posts with the author character to resolve ownership.
+    const lookupRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'post-id-1',
+      topicId: 'topic-id-1',
+      parentPostId: null,
+      authorCharacterId: 'char-id-1',
+      body: 'I pick Bulbasaur.',
+      authorUserId: 'user-id-1',
+      authorStatus: 'active',
+      authorDeletedAt: null as Date | null,
+      createdAt: new Date('2026-10-17T00:00:00.000Z'),
+      updatedAt: new Date('2026-10-17T00:00:00.000Z'),
+      ...overrides,
+    });
+
+    const currentRow = {
+      id: 'post-id-1',
+      topicId: 'topic-id-1',
+      parentPostId: null,
+      authorCharacterId: 'char-id-1',
+      body: 'I pick Bulbasaur.',
+      createdAt: new Date('2026-10-17T00:00:00.000Z'),
+      updatedAt: new Date('2026-10-17T00:00:00.000Z'),
+    };
+
+    function createUpdateDbMock(lookup: unknown[], updated: unknown = updatedRow) {
+      const select = jest.fn().mockImplementation(() => createChain(lookup));
+      const returning = jest.fn().mockResolvedValue([updated]);
+      const updateWhere = jest.fn().mockReturnValue({ returning });
+      const updateSet = jest.fn().mockReturnValue({ where: updateWhere });
+      const update = jest.fn().mockReturnValue({ set: updateSet });
+      return { dbMock: { select, update }, updateSet, update };
+    }
+
+    function patchOf(updateSet: jest.Mock): Record<string, unknown> {
+      return updateSet.mock.calls[0][0] as Record<string, unknown>;
+    }
+
+    it('should update the body for the author', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.updatePost('post-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      expect(patchOf(updateSet)).toEqual(expect.objectContaining({ body: 'Updated reply.' }));
+      expect(result).toEqual(updatedRow);
+    });
+
+    it('should set updatedAt explicitly, since PostgreSQL does not refresh it', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.updatePost('post-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      expect(patchOf(updateSet).updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should store the sanitized body', async () => {
+      // Arrange
+      const { dbMock, updateSet } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      await service.updatePost('post-id-1', 'user-id-1', 'user', {
+        body: '<script>alert("xss")</script><p>Hello</p>',
+      });
+
+      // Assert
+      const stored = patchOf(updateSet).body as string;
+      expect(stored).not.toContain('<script>');
+      expect(stored).toContain('Hello');
+    });
+
+    it('should throw ValidationError when the sanitized body is empty', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updatePost('post-id-1', 'user-id-1', 'user', {
+        body: '<script>alert("xss")</script>',
+      });
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ValidationError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should return the current post without writing when no fields are provided', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow()]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.updatePost('post-id-1', 'user-id-1', 'user', {});
+
+      // Assert
+      expect(update).not.toHaveBeenCalled();
+      expect(result).toEqual(currentRow);
+    });
+
+    it('should throw NotFoundError when the post does not exist', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updatePost('post-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the caller is neither the author nor staff', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updatePost('post-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError when the author character is not active', async () => {
+      // Arrange
+      const { dbMock, update } = createUpdateDbMock([lookupRow({ authorStatus: 'banned' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.updatePost('post-id-1', 'user-id-1', 'user', dto);
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should allow staff to edit a post authored by someone else', async () => {
+      // Arrange
+      const { dbMock } = createUpdateDbMock([lookupRow({ authorUserId: 'someone-else' })]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.updatePost('post-id-1', 'staff-user-id', 'admin', dto);
+
+      // Assert
+      expect(result).toEqual(updatedRow);
+    });
+  });
 });
