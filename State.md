@@ -1,26 +1,27 @@
 # Project State
 
 **Last updated**: 2026-10-18
-**Current phase**: Phase 5 complete — Topics & Posts; next is Phase 6 (Social Features, TASK-060 list friendships)
+**Current phase**: Phase 5 complete — Topics & Posts. Queued before Phase 6: FIX-005 (docs truth-up, this task), FIX-006 (state-docs CI enforcement), FIX-007 (Node 24 LTS upgrade); then Phase 6 (Social Features, TASK-060 list friendships)
 
-## Verification (2026-10-18, branch feature/task-059-sanitize-html-hardening)
+## Verification (2026-10-18, branch `develop` @ `22de8597`)
 
-- `pnpm test`: 43 suites / 414 tests pass, exit 0 (408 + 6 new for TASK-059). Jest writes its
+- `pnpm test`: 43 suites / 414 tests pass, exit 0 (run on `develop` @ `22de8597`). Jest writes its
   report to stderr and prints a `worker failed to exit gracefully` warning (a leaked handle/timer
   in some suite) — cosmetic, it does not change the exit code; hunt it in TASK-081 with `--detectOpenHandles`
 - `pnpm test:e2e`: 2 suites / 3 tests pass, exit 0 (health + auth rate-limit 429 path)
 - `pnpm test:integration`: exit 0, no suites yet ("No tests found, exiting with code 0")
 - `pnpm lint`: clean, exit 0
 - `pnpm exec tsc --noEmit`: clean, exit 0
-- `pnpm db:generate`: exit 0, "No schema changes, nothing to migrate"
-- git status: TASK-059 code + docs committed on the feature branch, pending PR into `develop`
+- git: TASK-058 and TASK-059 are merged and published on `develop` (@ `22de8597`); no feature branch is open
+- FIX-005 is docs-only: no test, schema, or migration impact
 
 ## Current Status
 
-Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) and implemented: src/common/utils/sanitize-html.ts now enforces an explicit allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto — instead of the library defaults. This fixed a real gap: the installed sanitize-html does not allow img by default, so images were stripped entirely, while the defaults also let through div/span/tables/target. No SanitizePipe by design: sanitization lives in the write services (topics/posts create+edit), which also own the sanitized-empty ValidationError. No new dependency and no schema change. Next is Phase 6 (TASK-060, GET /friendships).
+Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) and implemented: src/common/utils/sanitize-html.ts now enforces an explicit allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto — instead of the library defaults. This fixed a real gap: the installed sanitize-html does not allow img by default, so images were stripped entirely, while the defaults also let through div/span/tables/target. No SanitizePipe by design: sanitization lives in the write services (topics/posts create+edit), which also own the sanitized-empty ValidationError. No new dependency and no schema change. FIX-005 then aligned the documentation with that reality (State.md verification block, API.md Topics status, README module tree) and queued FIX-006 (a CI gate that fails a PR when State.md is not updated) and FIX-007 (Node 24 LTS; Node 20 reached EOL on 2026-04-30) before Phase 6 begins.
 
 ## Last Completed
 
+- **FIX-005** — Docs truth-up: State.md verification block now reflects the merged TASK-058/059 (`develop` @ `22de8597`, no open feature branch) and records the queued FIX-006/FIX-007 work; API.md marks Topics fully implemented (Phase 5); README structure adds the `posts/` module and drops the stale "Phase 5, in progress" note. Docs-only: no code, schema, or migration impact.
 - **TASK-059** — Rescope + harden body sanitization: explicit sanitize-html allowlist (img enabled, div/span/tables/target blocked, schemes http/https/mailto) in the shared util, 6 new util tests pinning every acceptance criterion; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency. Phase 5 complete.
 - **TASK-058** — Implement DELETE /posts/:id via PostsService.deletePost (ADR-016 ownership, soft delete, topic replyCount decrement clamped at zero, idempotent 204 without auth check, 404 missing; 408/408 unit, 3/3 e2e, lint + tsc clean, no migration). Phase 5 in progress.
 - **TASK-057** — Implement PATCH /posts/:id via PostsService.updatePost (author-character ownership or staff, partial sanitized body, no-op returns current, explicit updatedAt, 404 missing/deleted, 403 forbidden; 399/399 unit, lint + tsc clean, no migration). Phase 5 in progress.
@@ -35,6 +36,7 @@ Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) an
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-18 | FIX-005 | Docs truth-up: State.md verification block reflects merged TASK-058/059 (`develop` @ `22de8597`) + queued FIX-006/007; API.md Topics → fully implemented (Phase 5); README tree adds `posts/` and drops the stale "Phase 5, in progress" note — docs-only, no code or migration |
 | 2026-10-18 | TASK-059 | Body sanitization hardened: explicit sanitize-html allowlist (img enabled — defaults stripped it; div/span/tables/target blocked; schemes http/https/mailto) replacing library defaults; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency — Phase 5 complete |
 | 2026-10-18 | TASK-058 | DELETE /posts/:id via PostsService.deletePost (ADR-016 ownership, soft delete, topic replyCount decrement clamped at zero, idempotent 204 without auth check, 404 missing); 408/408 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-057 | PATCH /posts/:id via PostsService.updatePost (author-character ownership or staff, partial sanitized body, no-op returns current, explicit updatedAt, 404 missing/deleted, 403 forbidden); unit, lint + tsc clean, no migration — Phase 5 in progress |
