@@ -59,4 +59,25 @@ describe('PostsController', () => {
       expect(result).toBe(detail);
     });
   });
+
+  describe('updatePost', () => {
+    it('should delegate the update with the dto, user id and role', async () => {
+      // Arrange
+      const id = 'post-id-1';
+      const dto = { body: 'Updated reply.' };
+      const updated = { id, topicId: 'topic-id-1', body: 'Updated reply.' };
+      const serviceMock = { updatePost: jest.fn().mockResolvedValue(updated) };
+      const controller = new PostsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.updatePost(id, 'user-id-1', 'user', dto);
+
+      // Assert
+      expect(serviceMock.updatePost).toHaveBeenCalledWith(id, 'user-id-1', 'user', dto);
+      expect(result).toBe(updated);
+    });
+  });
 });

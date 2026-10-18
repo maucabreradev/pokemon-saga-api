@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { UserRole } from '../auth/decorators/roles.decorator';
 import { ForbiddenError, NotFoundError, ValidationError } from '../common/exceptions/app-errors';
 import { sanitizeHtml } from '../common/utils/sanitize-html';
 import { DRIZZLE, DrizzleDB } from '../database/database.module';
@@ -8,6 +9,7 @@ import { posts } from '../database/schema/posts';
 import { topics } from '../database/schema/topics';
 import { ForumsService } from '../forums/forums.service';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 
 export interface CreatedPost {
   id: string;
@@ -26,6 +28,18 @@ export interface PostDetail {
   authorName: string;
   body: string;
   replyCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// An edit returns the row projection createPost already returns (plus updatedAt),
+// so the shape stays consistent between writing and editing a post.
+export interface UpdatedPost {
+  id: string;
+  topicId: string;
+  parentPostId: string | null;
+  authorCharacterId: string;
+  body: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -196,5 +210,84 @@ export class PostsService {
   // Alias kept for callers that prefer the shorter name; both return the same detail.
   getPost(id: string, userId?: string): Promise<PostDetail> {
     return this.getPostDetail(id, userId);
+  }
+
+  async updatePost(
+    id: string,
+    userId: string,
+    userRole: UserRole,
+    dto: UpdatePostDto,
+  ): Promise<UpdatedPost> {
+    // Posts are authored by a character, so that character carries ownership:
+    // the edit is allowed when it belongs to the caller and is still active.
+    const [post] = await this.db
+      .select({
+        id: posts.id,
+        topicId: posts.topicId,
+        parentPostId: posts.parentPostId,
+        authorCharacterId: posts.authorCharacterId,
+        body: posts.body,
+        authorUserId: characters.userId,
+        authorStatus: characters.status,
+        authorDeletedAt: characters.deletedAt,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+      })
+      .from(posts)
+      .innerJoin(characters, eq(posts.authorCharacterId, characters.id))
+      .where(and(eq(posts.id, id), eq(posts.isDeleted, false), isNull(posts.deletedAt)))
+      .limit(1);
+
+    if (!post) {
+      throw new NotFoundError('Post', id);
+    }
+
+    const isStaff = userRole === 'admin' || userRole === 'webmaster';
+    const isActiveAuthor =
+      post.authorUserId === userId &&
+      post.authorStatus === 'active' &&
+      post.authorDeletedAt === null;
+
+    if (!isActiveAuthor && !isStaff) {
+      throw new ForbiddenError('You do not own this post');
+    }
+
+    const current: UpdatedPost = {
+      id: post.id,
+      topicId: post.topicId,
+      parentPostId: post.parentPostId,
+      authorCharacterId: post.authorCharacterId,
+      body: post.body,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+    };
+
+    // PATCH with no fields is a no-op that reports the current state, matching
+    // the convention already used by updateTopic and updateForum.
+    if (dto.body === undefined) {
+      return current;
+    }
+
+    const body = sanitizeHtml(dto.body);
+
+    if (body.trim().length === 0) {
+      throw new ValidationError('Post body must not be empty');
+    }
+
+    const [updated] = await this.db
+      .update(posts)
+      .set({ body, updatedAt: new Date() })
+      .where(eq(posts.id, id))
+      .returning({
+        id: posts.id,
+        topicId: posts.topicId,
+        parentPostId: posts.parentPostId,
+        authorCharacterId: posts.authorCharacterId,
+        body: posts.body,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+      });
+
+    return updated;
   }
 }
