@@ -1,11 +1,11 @@
 # Project State
 
 **Last updated**: 2026-10-17
-**Current phase**: Phase 5 in progress — Topics (TASK-054 complete, next TASK-055 create post)
+**Current phase**: Phase 5 in progress — Topics & Posts (TASK-055 complete, next TASK-056 get post)
 
-## Verification (2026-10-17, branch feature/task-054-lock-topic)
+## Verification (2026-10-17, branch feature/task-055-create-post)
 
-- `pnpm test`: 39 suites / 358 tests pass, exit 0, ~35s. Jest writes its report to stderr and
+- `pnpm test`: 42 suites / 377 tests pass, exit 0, ~35s. Jest writes its report to stderr and
   prints a `worker failed to exit gracefully` warning (a leaked handle/timer in some suite) —
   cosmetic, it does not change the exit code; hunt it in TASK-081 with `--detectOpenHandles`
 - `pnpm test:e2e`: 2 suites / 3 tests pass, exit 0, ~54s (health + auth rate-limit 429 path)
@@ -13,14 +13,15 @@
 - `pnpm lint`: clean, exit 0
 - `pnpm exec tsc --noEmit`: clean, exit 0
 - `pnpm db:generate`: exit 0, "No schema changes, nothing to migrate"
-- git status: 4 modified + 0 untracked files (TASK-054 code + docs); commits pending
+- git status: 6 modified + 1 untracked dir (TASK-055 code + docs); commits pending
 
 ## Current Status
 
-Phase 5 is in progress. TASK-054 (PATCH /topics/:id/lock) implemented as TopicsService.lockTopic: staff-only via @Roles('admin','webmaster'), sets isLocked=true with explicit updatedAt, 404 when missing/deleted. Reuses the UpdatedTopic projection. Enforcement of "no new posts on locked topics" lands in TASK-055. No migration (no schema change). Next is TASK-055 (POST /posts, Phase 5).
+Phase 5 is in progress. TASK-055 (POST /posts) implemented as a new PostsModule: PostsService.createPost resolves a main-first active author character (403 when none), 404 when the topic is missing/deleted, asserts forum visibility (404/403), rejects locked topics (403), validates a parent post in the same topic (404 when missing), sanitizes the body (ValidationError when it sanitizes empty), inserts the post, then increments `topics.replyCount` with explicit updatedAt. Returns the created post with 201. No migration (no schema change). Next is TASK-056 (GET /posts/:id, Phase 5).
 
 ## Last Completed
 
+- **TASK-055** — Implement POST /posts via PostsService.createPost (new PostsModule; main-first active author or 403, topic 404/forum-visibility, locked 403, parent-post same-topic 404, sanitized body, replyCount increment; 377/377 unit, lint + tsc clean, no migration). Phase 5 in progress.
 - **TASK-054** — Implement PATCH /topics/:id/lock via lockTopic (staff-only via @Roles admin/webmaster, sets isLocked=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-053** — Implement PATCH /topics/:id/pin via pinTopic (staff-only via @Roles admin/webmaster, sets isPinned=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-052** — Implement DELETE /topics/:id via deleteTopic (author-or-staff via author-character join, banned/deleted author 403, locked staff-only, idempotent 204, soft delete with explicit deletedAt/updatedAt); unit, lint + tsc clean, no migration. Phase 5 in progress.
@@ -32,6 +33,7 @@ Phase 5 is in progress. TASK-054 (PATCH /topics/:id/lock) implemented as TopicsS
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-17 | TASK-055 | POST /posts via PostsService.createPost (new PostsModule; main-first active author or 403, topic 404/forum-visibility, locked 403, parent-post same-topic 404, sanitized body, replyCount increment); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-054 | PATCH /topics/:id/lock via lockTopic (staff-only via @Roles admin/webmaster, sets isLocked=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-053 | PATCH /topics/:id/pin via pinTopic (staff-only via @Roles admin/webmaster, sets isPinned=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-052 | DELETE /topics/:id via deleteTopic (author-or-staff via author-character join, banned author 403, locked staff-only, idempotent 204, soft delete with explicit deletedAt/updatedAt); unit, lint + tsc clean, no migration — Phase 5 in progress |
@@ -130,6 +132,7 @@ Phase 5 is in progress. TASK-054 (PATCH /topics/:id/lock) implemented as TopicsS
 - Topic edit (TASK-051): ownership resolves through the author-character join (`topics.author_character_id → characters.user_id`), so a banned or deleted author character gets 403 while admin/webmaster bypass; locked topics are staff-only for edits; a PATCH with no fields is an idempotent no-op that returns the current topic; no forum-visibility check on edit by design (the author is not writing new content into a forum)
 - Topic delete (TASK-052): soft delete sets `is_deleted=true`, `deleted_at=now`, `updatedAt=now`; lookup skips the deleted filters to distinguish 404 (missing) from idempotent 204 (already deleted, no auth check); ownership reuses the ADR-016 shape (active author or staff, locked topics staff-only); deleted topics stay hidden from listings/detail; no forum-visibility check and no cascade to posts
 - Topic pin (TASK-053): staff-only via @Roles('admin','webmaster') guard (no ownership/active character), sets isPinned=true with explicit updatedAt, 404 when missing or deleted; reuses the UpdatedTopic projection; idempotent (re-pin is a no-op write)
-- Topic lock (TASK-054): staff-only via @Roles('admin','webmaster') guard, sets isLocked=true with explicit updatedAt, 404 when missing or deleted; reuses the UpdatedTopic projection; enforcement of "no new posts on locked topics" lands in TASK-055 (create post)
+- Topic lock (TASK-054): staff-only via @Roles('admin','webmaster') guard, sets isLocked=true with explicit updatedAt, 404 when missing or deleted; reuses the UpdatedTopic projection
+- Post create (TASK-055): new PostsModule (imports ForumsModule) owns POST /posts; author is the main-first active character (403 when none), topic lookup excludes deleted (404), forum visibility via ForumsService.assertForumAccess, locked topic 403, parent post must be non-deleted and in the same topic (404 otherwise), body sanitized with sanitize-html (ValidationError when it sanitizes empty); insert then `replyCount + 1` are sequential (no transaction, consistent with createTopic); DTO requires topicId (UUID), optional parentPostId (UUID), body 1-10000 chars
 - Jest leaks a handle in some suite (`worker failed to exit gracefully`, printed to stderr); `pnpm test` still exits 0 — investigate with `pnpm test --detectOpenHandles` during TASK-081
 - Jest writes its whole report to stderr: never read a merged stream (`2>&1`) as a failure, and never read `%ERRORLEVEL%` from a single-line `cmd /c "a & echo %ERRORLEVEL%"` (it expands at parse time and reports the *previous* value)
