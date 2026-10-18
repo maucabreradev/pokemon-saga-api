@@ -99,17 +99,60 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so origin/develop exists as a diff base on every event
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Verify state docs updated
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git fetch --no-tags origin develop
+          CHANGED_FILES=$(git diff --name-only origin/develop...HEAD)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No diff against origin/develop; nothing to verify."
+            exit 0
+          fi
+
+          # Every PR must journal its outcome in State.md (AGENTS.md -> Task Tracking).
+          if ! echo "$CHANGED_FILES" | grep -qx 'State.md'; then
+            echo "ERROR: State.md was not updated by this PR."
+            echo "Every PR must record its outcome in State.md (AGENTS.md -> Task Tracking)."
+            exit 1
+          fi
+
+          # Task branches additionally own their checkbox and their journal entry.
+          if echo "$HEAD_REF" | grep -qE '^feature/task-[0-9]+-'; then
+            TASK_ID=$(echo "$HEAD_REF" | sed -nE 's#^feature/(task-[0-9]+)-.*#\1#p' | tr '[:lower:]' '[:upper:]')
+            if ! echo "$CHANGED_FILES" | grep -qx 'TASKS.md'; then
+              echo "ERROR: $TASK_ID changed but TASKS.md was not updated."
+              exit 1
+            fi
+            if ! git diff origin/develop...HEAD -- TASKS.md | grep -qE "^\+.*\[x\].*\*\*$TASK_ID"; then
+              echo "ERROR: TASKS.md does not mark $TASK_ID as completed (- [x] **$TASK_ID**)."
+              exit 1
+            fi
+            if ! git diff origin/develop...HEAD -- State.md | grep -qi "$TASK_ID"; then
+              echo "ERROR: State.md does not mention $TASK_ID."
+              exit 1
+            fi
+          fi
       - name: Verify migrations exist for schema changes
         run: |
-          CHANGED_SCHEMA=$(git diff --name-only origin/develop...HEAD | grep '^src/database/schema/' || true)
+          CHANGED_FILES=$(git diff --name-only origin/develop...HEAD)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No diff against origin/develop; nothing to verify."
+            exit 0
+          fi
+          CHANGED_SCHEMA=$(echo "$CHANGED_FILES" | grep '^src/database/schema/' || true)
           if [ -n "$CHANGED_SCHEMA" ]; then
-            CHANGED_MIGRATIONS=$(git diff --name-only origin/develop...HEAD | grep '^src/database/migrations/' || true)
+            CHANGED_MIGRATIONS=$(echo "$CHANGED_FILES" | grep '^src/database/migrations/' || true)
             if [ -z "$CHANGED_MIGRATIONS" ]; then
               echo "ERROR: Schema changed but no migration files found"
               echo "Run 'pnpm db:generate' and commit the migration"
@@ -121,7 +164,12 @@ jobs:
           # Units with dedicated specs are required for logic-bearing files.
           # Excluded by convention (no unit-testable logic of their own):
           # entry point, Nest modules, Drizzle schema definitions, barrels.
-          CHANGED_SRC=$(git diff --name-only origin/develop...HEAD \
+          CHANGED_FILES=$(git diff --name-only origin/develop...HEAD)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No diff against origin/develop; nothing to verify."
+            exit 0
+          fi
+          CHANGED_SRC=$(echo "$CHANGED_FILES" \
             | grep '^src/.*\.ts$' \
             | grep -v '\.spec\.ts$' \
             | grep -v '\.test\.ts$' \

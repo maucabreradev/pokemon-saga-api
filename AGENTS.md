@@ -6,7 +6,7 @@
 |------|--------|
 | `main` | Production — **NEVER** push, merge, or modify directly |
 | `develop` | Integration branch — stable, always deployable |
-| `feature/[tarea]` | One branch per task, opened as a PR into `develop`, deleted after squash merge |
+| `feature/task-NNN-<slug>` | One branch per task (`feature/fix-NNN-<slug>` for maintenance), opened as a PR into `develop`, deleted after squash merge |
 
 ## Workflow
 
@@ -14,30 +14,34 @@
 # 1. Start a new task — create feature branch from develop
 git checkout develop
 git pull origin develop
-git checkout -b feature/auth-jwt-implementation
+git checkout -b feature/task-060-list-friendships
 
 # 2. Work with atomic, contextual conventional commits
-git commit -m "feat(auth): add JWT access token generation"
-git commit -m "fix(auth): handle expired refresh token edge case"
+git commit -m "feat(friendships): add friendship list query"
+git commit -m "test(friendships): cover the status filter and the no-character case"
 
-# 3. Task complete — push the branch and open a PR into develop
-git push -u origin feature/auth-jwt-implementation
+# 3. Task complete — refresh the journal and commit it LAST
+#    TASKS.md checkbox -> [x]; State.md: every section (see Task Tracking)
+git commit -m "chore(tasks): mark TASK-060 as completed and update project state"
+
+# 4. Push the branch and open a PR into develop
+git push -u origin feature/task-060-list-friendships
 # Open the PR in the GitHub UI (or: gh pr create --base develop)
 
-# 4. The PR title becomes the squash subject and the PR body becomes the
-#    commit body, so write them as the final commit you want on develop:
+# 5. The PR title becomes the squash subject and the PR body becomes the
+#    commit body, so write them as the final commit you want on develop.
+#    Do NOT edit the squash subject in the UI: keep the "(#NN)" suffix it
+#    gets automatically, so the commit stays linked to its PR:
 #
-#    feat(auth): implement JWT authentication with refresh tokens
+#    feat(friendships): implement GET /friendships (#60)
 #
-#    - Add login endpoint with access + refresh token pair
-#    - Implement refresh token rotation (30-day expiry, hashed storage)
-#    - Add logout (single session) and logout-all endpoints
-#    - Add global guard for protected routes
-#    - Add rate limiting on auth endpoints
+#    - Add friendships module with the list endpoint
+#    - Filter by status (pending, accepted, blocked)
+#    - Return the friend's readableId, public name, avatar, and createdAt
 #
-#    Closes: AUTH-001
+#    Closes: TASK-060
 
-# 5. Wait for the required checks, squash merge from the GitHub UI,
+# 6. Wait for the required checks, squash merge from the GitHub UI,
 #    let the UI delete the branch, then sync locally
 git checkout develop
 git pull origin develop
@@ -107,6 +111,7 @@ A task is **NOT** complete until:
 - [ ] All tests pass
 - [ ] No regressions in existing tests
 - [ ] `TASKS.md` checkbox marked as `[x]`
+- [ ] `State.md` refreshed — every section listed in Task Tracking
 
 ### Red Flags — STOP and Start Over
 
@@ -149,12 +154,25 @@ Before running `pnpm add`, verify the dependency against this checklist:
 
 ## Task Tracking
 
-When a task is completed:
-1. Mark the corresponding checkbox as `[x]` in `TASKS.md`
-2. Update `State.md` with: current project status, last completed task, next pending task, and any context notes for the next session
-3. Commit the updated `TASKS.md` and `State.md` on the feature branch before squash merge
+Completing a task is not finished until the project journal is updated. The CI
+job `TDD & Migration Enforcement` enforces this: any PR whose diff does not touch
+`State.md` fails, and a `feature/task-NNN-*` branch additionally must update
+`TASKS.md` (with `- [x] **TASK-NNN**`) and mention `TASK-NNN` in `State.md`.
 
-Example commit: `chore(tasks): mark TASK-014 as completed and update project state`
+When a task is completed:
+1. Mark the corresponding checkbox as `[x]` in `TASKS.md` (task branches)
+2. Refresh `State.md` — every section, in this order:
+   - `Last updated` date
+   - `Current phase` line (phase status + next task)
+   - `Verification` block (commands, suite/test counts, exit codes, branch/commit)
+   - `Current Status` paragraph (what changed and why)
+   - `Last Completed` entry (newest first; prune so the list stays readable)
+   - `Recent Activity` row (date, task, one-line summary)
+   - `Context for Next Session` notes (add what the next session must know; delete stale notes)
+3. Commit `TASKS.md` and `State.md` as the **last commit on the branch**, before
+   opening or updating the PR, so the squash carries the journal with the code
+
+Example commit: `chore(tasks): mark TASK-060 as completed and update project state`
 
 ## Strict Rules
 
@@ -167,3 +185,4 @@ Example commit: `chore(tasks): mark TASK-014 as completed and update project sta
 7. **Mark tasks as done** — update `TASKS.md` checkbox when a task is completed
 8. **TDD always** — RED → GREEN → REFACTOR for every feature and bugfix, no exceptions
 9. **Migrations mandatory** — Schema changes require `pnpm db:generate`, committed with the change
+10. **Update the journal** — every PR must touch `State.md`; `TDD & Migration Enforcement` fails the PR otherwise
