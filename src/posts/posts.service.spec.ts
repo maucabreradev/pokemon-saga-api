@@ -265,4 +265,138 @@ describe('PostsService', () => {
       });
     });
   });
+
+  describe('getPostDetail', () => {
+    const postRow = {
+      id: 'post-id-1',
+      topicId: 'topic-id-1',
+      parentPostId: null,
+      authorCharacterId: 'char-id-1',
+      authorName: 'Ash',
+      body: 'I pick Bulbasaur.',
+      forumId: 'forum-id-1',
+      createdAt: new Date('2026-10-17T00:00:00.000Z'),
+      updatedAt: new Date('2026-10-17T00:00:00.000Z'),
+    };
+
+    function createReadDbMock(selectResults: unknown[]) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chains: any[] = [];
+      let selectCalls = 0;
+      const select = jest.fn().mockImplementation(() => {
+        const chain = createChain(selectResults[selectCalls]);
+        chains.push(chain);
+        selectCalls++;
+        return chain;
+      });
+      return { dbMock: { select }, chains };
+    }
+
+    it('should return the post detail with its direct reply count', async () => {
+      // Arrange
+      const { dbMock } = createReadDbMock([[postRow], [{ id: 'reply-1' }, { id: 'reply-2' }]]);
+      const { service, forumsMock } = createService(dbMock);
+
+      // Act
+      const result = await service.getPostDetail('post-id-1');
+
+      // Assert
+      expect(forumsMock.assertForumAccess).toHaveBeenCalledWith('forum-id-1', undefined);
+      expect(result).toEqual({
+        id: 'post-id-1',
+        topicId: 'topic-id-1',
+        parentPostId: null,
+        authorCharacterId: 'char-id-1',
+        authorName: 'Ash',
+        body: 'I pick Bulbasaur.',
+        replyCount: 2,
+        createdAt: postRow.createdAt,
+        updatedAt: postRow.updatedAt,
+      });
+      expect(result).not.toHaveProperty('forumId');
+    });
+
+    it('should query the reply count by parent post id', async () => {
+      // Arrange
+      const { dbMock, chains } = createReadDbMock([[postRow], []]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.getPostDetail('post-id-1');
+
+      // Assert
+      expect(chains[1].where).toHaveBeenCalledTimes(1);
+      expect(result.replyCount).toBe(0);
+    });
+
+    it('should throw NotFoundError when the post does not exist', async () => {
+      // Arrange
+      const { dbMock } = createReadDbMock([[]]);
+      const { service, forumsMock } = createService(dbMock);
+
+      // Act
+      const promise = service.getPostDetail('missing-id');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+      expect(forumsMock.assertForumAccess).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when the post is deleted (same as missing)', async () => {
+      // Arrange: deleted rows are filtered in the WHERE clause, so the db returns [].
+      const { dbMock } = createReadDbMock([[]]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const promise = service.getPostDetail('deleted-id');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('should mask forbidden forums as not found for guests', async () => {
+      // Arrange
+      const { dbMock } = createReadDbMock([[postRow], []]);
+      const { service } = createService(dbMock, {
+        assertForumAccess: jest
+          .fn()
+          .mockRejectedValue(new ForbiddenError('You do not have permission to view this forum')),
+      });
+
+      // Act
+      const promise = service.getPostDetail('post-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(NotFoundError);
+    });
+
+    it('should propagate forbidden when an authenticated viewer lacks access', async () => {
+      // Arrange
+      const { dbMock } = createReadDbMock([[postRow], []]);
+      const { service, forumsMock } = createService(dbMock, {
+        assertForumAccess: jest
+          .fn()
+          .mockRejectedValue(new ForbiddenError('You do not have permission to view this forum')),
+      });
+
+      // Act
+      const promise = service.getPostDetail('post-id-1', 'user-id-1');
+
+      // Assert
+      await expect(promise).rejects.toBeInstanceOf(ForbiddenError);
+      expect(forumsMock.assertForumAccess).toHaveBeenCalledWith('forum-id-1', 'user-id-1');
+    });
+
+    it('should expose getPost as an alias of getPostDetail', async () => {
+      // Arrange
+      const { dbMock } = createReadDbMock([[postRow], []]);
+      const { service } = createService(dbMock);
+
+      // Act
+      const result = await service.getPost('post-id-1');
+
+      // Assert
+      expect(result.id).toBe('post-id-1');
+    });
+  });
 });

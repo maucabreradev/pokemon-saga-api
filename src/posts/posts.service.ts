@@ -18,6 +18,18 @@ export interface CreatedPost {
   createdAt: Date;
 }
 
+export interface PostDetail {
+  id: string;
+  topicId: string;
+  parentPostId: string | null;
+  authorCharacterId: string;
+  authorName: string;
+  body: string;
+  replyCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class PostsService {
   constructor(
@@ -119,5 +131,70 @@ export class PostsService {
       .where(eq(topics.id, dto.topicId));
 
     return created;
+  }
+
+  async getPostDetail(id: string, userId?: string): Promise<PostDetail> {
+    const [post] = await this.db
+      .select({
+        id: posts.id,
+        topicId: posts.topicId,
+        parentPostId: posts.parentPostId,
+        authorCharacterId: posts.authorCharacterId,
+        authorName: characters.publicName,
+        body: posts.body,
+        forumId: topics.forumId,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+      })
+      .from(posts)
+      .innerJoin(characters, eq(posts.authorCharacterId, characters.id))
+      .innerJoin(topics, eq(posts.topicId, topics.id))
+      .where(
+        and(
+          eq(posts.id, id),
+          eq(posts.isDeleted, false),
+          isNull(posts.deletedAt),
+          // A post whose topic was deleted is no longer reachable.
+          eq(topics.isDeleted, false),
+          isNull(topics.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!post) {
+      throw new NotFoundError('Post', id);
+    }
+
+    try {
+      await this.forumsService.assertForumAccess(post.forumId, userId);
+    } catch (error) {
+      // Guests must not learn posts in non-public forums exist (same mask as getTopicDetail).
+      if (userId === undefined && error instanceof ForbiddenError) {
+        throw new NotFoundError('Post', id);
+      }
+      throw error;
+    }
+
+    const replies = await this.db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(and(eq(posts.parentPostId, id), eq(posts.isDeleted, false), isNull(posts.deletedAt)));
+
+    return {
+      id: post.id,
+      topicId: post.topicId,
+      parentPostId: post.parentPostId,
+      authorCharacterId: post.authorCharacterId,
+      authorName: post.authorName,
+      body: post.body,
+      replyCount: replies.length,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+    };
+  }
+
+  // Alias kept for callers that prefer the shorter name; both return the same detail.
+  getPost(id: string, userId?: string): Promise<PostDetail> {
+    return this.getPostDetail(id, userId);
   }
 }

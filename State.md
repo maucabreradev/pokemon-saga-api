@@ -1,11 +1,11 @@
 # Project State
 
 **Last updated**: 2026-10-17
-**Current phase**: Phase 5 in progress — Topics & Posts (TASK-055 complete, next TASK-056 get post)
+**Current phase**: Phase 5 in progress — Topics & Posts (TASK-056 complete, next TASK-057 edit post)
 
-## Verification (2026-10-17, branch feature/task-055-create-post)
+## Verification (2026-10-17, branch feature/task-056-get-post)
 
-- `pnpm test`: 42 suites / 377 tests pass, exit 0, ~35s. Jest writes its report to stderr and
+- `pnpm test`: 42 suites / 385 tests pass, exit 0, ~35s. Jest writes its report to stderr and
   prints a `worker failed to exit gracefully` warning (a leaked handle/timer in some suite) —
   cosmetic, it does not change the exit code; hunt it in TASK-081 with `--detectOpenHandles`
 - `pnpm test:e2e`: 2 suites / 3 tests pass, exit 0, ~54s (health + auth rate-limit 429 path)
@@ -13,14 +13,15 @@
 - `pnpm lint`: clean, exit 0
 - `pnpm exec tsc --noEmit`: clean, exit 0
 - `pnpm db:generate`: exit 0, "No schema changes, nothing to migrate"
-- git status: 6 modified + 1 untracked dir (TASK-055 code + docs); commits pending
+- git status: 6 modified + 0 untracked files (TASK-056 code + docs); commits pending
 
 ## Current Status
 
-Phase 5 is in progress. TASK-055 (POST /posts) implemented as a new PostsModule: PostsService.createPost resolves a main-first active author character (403 when none), 404 when the topic is missing/deleted, asserts forum visibility (404/403), rejects locked topics (403), validates a parent post in the same topic (404 when missing), sanitizes the body (ValidationError when it sanitizes empty), inserts the post, then increments `topics.replyCount` with explicit updatedAt. Returns the created post with 201. No migration (no schema change). Next is TASK-056 (GET /posts/:id, Phase 5).
+Phase 5 is in progress. TASK-056 (GET /posts/:id) implemented as PostsService.getPostDetail(id, userId?): joins posts → characters → topics filtering out deleted posts and deleted topics (404 when missing or deleted), asserts forum access and masks forbidden forums as 404 for guests, counts direct non-deleted replies (parentPostId = id), and returns the post detail without leaking forumId. A public controller route exposes it, and getPost is an alias. No migration (no schema change). Next is TASK-057 (PATCH /posts/:id, Phase 5).
 
 ## Last Completed
 
+- **TASK-056** — Implement GET /posts/:id via PostsService.getPostDetail (posts→characters→topics join, deleted post/topic 404, guest forum mask, direct reply count, no forumId leak; public route + getPost alias; 385/385 unit, lint + tsc clean, no migration). Phase 5 in progress.
 - **TASK-055** — Implement POST /posts via PostsService.createPost (new PostsModule; main-first active author or 403, topic 404/forum-visibility, locked 403, parent-post same-topic 404, sanitized body, replyCount increment; 377/377 unit, lint + tsc clean, no migration). Phase 5 in progress.
 - **TASK-054** — Implement PATCH /topics/:id/lock via lockTopic (staff-only via @Roles admin/webmaster, sets isLocked=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-053** — Implement PATCH /topics/:id/pin via pinTopic (staff-only via @Roles admin/webmaster, sets isPinned=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration. Phase 5 in progress.
@@ -33,6 +34,7 @@ Phase 5 is in progress. TASK-055 (POST /posts) implemented as a new PostsModule:
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-17 | TASK-056 | GET /posts/:id via PostsService.getPostDetail (posts→characters→topics join, deleted post/topic 404, guest forum mask, direct reply count, no forumId leak; public route + getPost alias); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-055 | POST /posts via PostsService.createPost (new PostsModule; main-first active author or 403, topic 404/forum-visibility, locked 403, parent-post same-topic 404, sanitized body, replyCount increment); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-054 | PATCH /topics/:id/lock via lockTopic (staff-only via @Roles admin/webmaster, sets isLocked=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-053 | PATCH /topics/:id/pin via pinTopic (staff-only via @Roles admin/webmaster, sets isPinned=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration — Phase 5 in progress |
@@ -134,5 +136,6 @@ Phase 5 is in progress. TASK-055 (POST /posts) implemented as a new PostsModule:
 - Topic pin (TASK-053): staff-only via @Roles('admin','webmaster') guard (no ownership/active character), sets isPinned=true with explicit updatedAt, 404 when missing or deleted; reuses the UpdatedTopic projection; idempotent (re-pin is a no-op write)
 - Topic lock (TASK-054): staff-only via @Roles('admin','webmaster') guard, sets isLocked=true with explicit updatedAt, 404 when missing or deleted; reuses the UpdatedTopic projection
 - Post create (TASK-055): new PostsModule (imports ForumsModule) owns POST /posts; author is the main-first active character (403 when none), topic lookup excludes deleted (404), forum visibility via ForumsService.assertForumAccess, locked topic 403, parent post must be non-deleted and in the same topic (404 otherwise), body sanitized with sanitize-html (ValidationError when it sanitizes empty); insert then `replyCount + 1` are sequential (no transaction, consistent with createTopic); DTO requires topicId (UUID), optional parentPostId (UUID), body 1-10000 chars
+- Post get (TASK-056): PostsService.getPostDetail(id, userId?) joins posts→characters→topics, filters deleted posts and deleted topics (404), reuses the guest forum mask from getTopicDetail (userId undefined + Forbidden → 404), counts direct non-deleted replies (parentPostId = id), and omits forumId from the response; GET /posts/:id is @Public and the controller does not pass userId (matches getTopicDetail, so runtime is guest view — authenticated visibility is available via the service param for callers/tests); `getPost` is an alias
 - Jest leaks a handle in some suite (`worker failed to exit gracefully`, printed to stderr); `pnpm test` still exits 0 — investigate with `pnpm test --detectOpenHandles` during TASK-081
 - Jest writes its whole report to stderr: never read a merged stream (`2>&1`) as a failure, and never read `%ERRORLEVEL%` from a single-line `cmd /c "a & echo %ERRORLEVEL%"` (it expands at parse time and reports the *previous* value)

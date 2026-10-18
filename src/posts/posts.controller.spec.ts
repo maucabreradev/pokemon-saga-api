@@ -4,6 +4,8 @@ jest.mock('@nestjs/swagger', () => ({
   ApiTags: () => () => undefined,
   ApiOperation: () => () => undefined,
   ApiCreatedResponse: () => () => undefined,
+  ApiOkResponse: () => () => undefined,
+  ApiParam: () => () => undefined,
   ApiBadRequestResponse: () => () => undefined,
   ApiBearerAuth: () => () => undefined,
   ApiUnauthorizedResponse: () => () => undefined,
@@ -35,6 +37,26 @@ describe('PostsController', () => {
       // Assert
       expect(serviceMock.createPost).toHaveBeenCalledWith(dto, 'user-id-1');
       expect(result).toBe(created);
+    });
+  });
+
+  describe('getPostDetail', () => {
+    it('should return the post detail from the service', async () => {
+      // Arrange
+      const id = 'post-id-1';
+      const detail = { id, topicId: 'topic-id-1', replyCount: 0 };
+      const serviceMock = { getPostDetail: jest.fn().mockResolvedValue(detail) };
+      const controller = new PostsController(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serviceMock as any,
+      );
+
+      // Act
+      const result = await controller.getPostDetail(id);
+
+      // Assert
+      expect(serviceMock.getPostDetail).toHaveBeenCalledWith(id);
+      expect(result).toBe(detail);
     });
   });
 });
