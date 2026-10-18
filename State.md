@@ -3,7 +3,7 @@
 **Last updated**: 2026-10-17
 **Current phase**: Phase 5 in progress — Topics & Posts (TASK-057 complete, next TASK-058 delete post)
 
-## Verification (2026-10-17, branch feature/task-057-edit-post)
+## Verification (2026-10-17, develop after TASK-057 squash merge — PR #55)
 
 - `pnpm test`: 43 suites / 399 tests pass, exit 0, ~35s. Jest writes its report to stderr and
   prints a `worker failed to exit gracefully` warning (a leaked handle/timer in some suite) —
@@ -13,7 +13,7 @@
 - `pnpm lint`: clean, exit 0
 - `pnpm exec tsc --noEmit`: clean, exit 0
 - `pnpm db:generate`: exit 0, "No schema changes, nothing to migrate"
-- git status: 4 modified + 2 untracked files (TASK-057 code + docs); commits pending
+- git status: clean on `develop`; TASK-057 squash-merged via PR #55, feature branch deleted
 
 ## Current Status
 
