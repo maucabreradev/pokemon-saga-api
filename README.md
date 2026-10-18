@@ -47,7 +47,8 @@ src/
 ├── users/            # Account endpoints
 ├── characters/       # Character profiles
 ├── forums/           # Categories, forums, visibility rules
-├── topics/           # Topics (Phase 5, in progress)
+├── topics/           # Topics (list, detail, create, edit, delete, pin, lock)
+├── posts/            # Posts and replies (create, detail, edit, delete)
 ├── health/           # Health check
 ├── database/         # Drizzle schema + migrations (seeds: Phase 11, ADR-007)
 ├── common/           # Shared DTOs, exceptions, filters, pipes, utils
