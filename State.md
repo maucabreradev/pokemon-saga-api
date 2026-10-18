@@ -1,11 +1,11 @@
 # Project State
 
 **Last updated**: 2026-10-18
-**Current phase**: Phase 5 in progress — Topics & Posts (TASK-058 complete, next TASK-059 body sanitization rescope)
+**Current phase**: Phase 5 complete — Topics & Posts; next is Phase 6 (Social Features, TASK-060 list friendships)
 
-## Verification (2026-10-18, branch feature/task-058-delete-post)
+## Verification (2026-10-18, branch feature/task-059-sanitize-html-hardening)
 
-- `pnpm test`: 43 suites / 408 tests pass, exit 0 (399 + 9 new for TASK-058). Jest writes its
+- `pnpm test`: 43 suites / 414 tests pass, exit 0 (408 + 6 new for TASK-059). Jest writes its
   report to stderr and prints a `worker failed to exit gracefully` warning (a leaked handle/timer
   in some suite) — cosmetic, it does not change the exit code; hunt it in TASK-081 with `--detectOpenHandles`
 - `pnpm test:e2e`: 2 suites / 3 tests pass, exit 0 (health + auth rate-limit 429 path)
@@ -13,14 +13,15 @@
 - `pnpm lint`: clean, exit 0
 - `pnpm exec tsc --noEmit`: clean, exit 0
 - `pnpm db:generate`: exit 0, "No schema changes, nothing to migrate"
-- git status: TASK-058 code + docs committed on the feature branch, pending PR into `develop`
+- git status: TASK-059 code + docs committed on the feature branch, pending PR into `develop`
 
 ## Current Status
 
-Phase 5 is in progress. TASK-058 (DELETE /posts/:id) implemented as PostsService.deletePost(id, userId, userRole): the lookup skips the deleted filters so a missing post is 404 while an already-deleted one is an idempotent 204 with no auth check; ownership reuses the ADR-016 shape (active author character or staff bypass); the soft delete sets isDeleted/deletedAt/updatedAt and the topic's denormalized replyCount is decremented, clamped at zero. No locked-topic check, matching updatePost (the spec omits it). No migration (no schema change). Next is TASK-059 (body sanitization) — rescope first: DOMPurify is superseded by ADR-015 and sanitize-html is already wired into topic/post create+edit.
+Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) and implemented: src/common/utils/sanitize-html.ts now enforces an explicit allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto — instead of the library defaults. This fixed a real gap: the installed sanitize-html does not allow img by default, so images were stripped entirely, while the defaults also let through div/span/tables/target. No SanitizePipe by design: sanitization lives in the write services (topics/posts create+edit), which also own the sanitized-empty ValidationError. No new dependency and no schema change. Next is Phase 6 (TASK-060, GET /friendships).
 
 ## Last Completed
 
+- **TASK-059** — Rescope + harden body sanitization: explicit sanitize-html allowlist (img enabled, div/span/tables/target blocked, schemes http/https/mailto) in the shared util, 6 new util tests pinning every acceptance criterion; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency. Phase 5 complete.
 - **TASK-058** — Implement DELETE /posts/:id via PostsService.deletePost (ADR-016 ownership, soft delete, topic replyCount decrement clamped at zero, idempotent 204 without auth check, 404 missing; 408/408 unit, 3/3 e2e, lint + tsc clean, no migration). Phase 5 in progress.
 - **TASK-057** — Implement PATCH /posts/:id via PostsService.updatePost (author-character ownership or staff, partial sanitized body, no-op returns current, explicit updatedAt, 404 missing/deleted, 403 forbidden; 399/399 unit, lint + tsc clean, no migration). Phase 5 in progress.
 - **TASK-056** — Implement GET /posts/:id via PostsService.getPostDetail (posts→characters→topics join, deleted post/topic 404, guest forum mask, direct reply count, no forumId leak; public route + getPost alias; 385/385 unit, lint + tsc clean, no migration). Phase 5 in progress.
@@ -29,12 +30,12 @@ Phase 5 is in progress. TASK-058 (DELETE /posts/:id) implemented as PostsService
 - **TASK-053** — Implement PATCH /topics/:id/pin via pinTopic (staff-only via @Roles admin/webmaster, sets isPinned=true with explicit updatedAt, 404 when missing/deleted); unit, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-052** — Implement DELETE /topics/:id via deleteTopic (author-or-staff via author-character join, banned/deleted author 403, locked staff-only, idempotent 204, soft delete with explicit deletedAt/updatedAt); unit, lint + tsc clean, no migration. Phase 5 in progress.
 - **TASK-051** — Implement PATCH /topics/:id via updateTopic (author-or-staff ownership resolved by joining the author character, banned/deleted author 403, locked topics staff-only, partial sanitized body, no-op returns current, explicit updatedAt); unit, lint + tsc clean, no migration. Phase 5 in progress.
-- **TASK-050** — Implement POST /topics via createTopic (auth + active character, visibility/lock guards, DOMPurify sanitize, 201); 324/324 unit, 3/3 e2e, lint + tsc clean, no migration. Phase 5 in progress.
 
 ## Recent Activity
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-18 | TASK-059 | Body sanitization hardened: explicit sanitize-html allowlist (img enabled — defaults stripped it; div/span/tables/target blocked; schemes http/https/mailto) replacing library defaults; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency — Phase 5 complete |
 | 2026-10-18 | TASK-058 | DELETE /posts/:id via PostsService.deletePost (ADR-016 ownership, soft delete, topic replyCount decrement clamped at zero, idempotent 204 without auth check, 404 missing); 408/408 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-057 | PATCH /posts/:id via PostsService.updatePost (author-character ownership or staff, partial sanitized body, no-op returns current, explicit updatedAt, 404 missing/deleted, 403 forbidden); unit, lint + tsc clean, no migration — Phase 5 in progress |
 | 2026-10-17 | TASK-056 | GET /posts/:id via PostsService.getPostDetail (posts→characters→topics join, deleted post/topic 404, guest forum mask, direct reply count, no forumId leak; public route + getPost alias); unit, lint + tsc clean, no migration — Phase 5 in progress |
@@ -142,6 +143,6 @@ Phase 5 is in progress. TASK-058 (DELETE /posts/:id) implemented as PostsService
 - Post get (TASK-056): PostsService.getPostDetail(id, userId?) joins posts→characters→topics, filters deleted posts and deleted topics (404), reuses the guest forum mask from getTopicDetail (userId undefined + Forbidden → 404), counts direct non-deleted replies (parentPostId = id), and omits forumId from the response; GET /posts/:id is @Public and the controller does not pass userId (matches getTopicDetail, so runtime is guest view — authenticated visibility is available via the service param for callers/tests); `getPost` is an alias
 - Post edit (TASK-057): PostsService.updatePost reuses the ADR-016 ownership shape (author character must be active, staff admin/webmaster bypass), PATCH with no body is an idempotent no-op returning the current post, body sanitized with sanitize-html (ValidationError when it sanitizes empty), update sets body + explicit updatedAt and returns the UpdatedPost row projection; no locked-topic check (the spec omits it, and editing adds no new content)
 - Post delete (TASK-058): PostsService.deletePost mirrors deleteTopic — the lookup skips the deleted filters so a missing post is 404 while an already-deleted one is an idempotent 204 (no write, no auth check); ownership reuses the ADR-016 shape; soft delete sets isDeleted/deletedAt/updatedAt and decrements the topic's denormalized replyCount with `Math.max(0, count - 1)` (createPost increments it for every post, reply or not); no locked-topic check, matching updatePost; the two writes are sequential (no transaction, consistent with createPost)
-- TASK-059 rescope needed before starting: its DOMPurify acceptance criterion is superseded by ADR-015 (Node 20 incompatibility); `src/common/utils/sanitize-html.ts` is already wired into topic/post create+edit, so the task should be rescoped to allowlist tuning and/or a reusable SanitizePipe instead of installing dompurify/jsdom
+- Body sanitization (TASK-059): `src/common/utils/sanitize-html.ts` pins an explicit sanitize-html allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto; the library defaults differ (img not allowed at all — images were stripped — while div/span/tables/target passed through), so future allowlist changes belong in this one util; b/i are intentionally not allowed (use strong/em); sanitization stays in the services (topics/posts create+edit) which own the sanitized-empty ValidationError — no SanitizePipe by design
 - Jest leaks a handle in some suite (`worker failed to exit gracefully`, printed to stderr); `pnpm test` still exits 0 — investigate with `pnpm test --detectOpenHandles` during TASK-081
 - Jest writes its whole report to stderr: never read a merged stream (`2>&1`) as a failure, and never read `%ERRORLEVEL%` from a single-line `cmd /c "a & echo %ERRORLEVEL%"` (it expands at parse time and reports the *previous* value)

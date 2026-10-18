@@ -80,7 +80,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-056** — Implement GET /posts/:id
 - [x] **TASK-057** — Implement PATCH /posts/:id (edit post)
 - [x] **TASK-058** — Implement DELETE /posts/:id (soft delete)
-- [ ] **TASK-059** — Implement DOMPurify sanitization for topic/post bodies
+- [x] **TASK-059** — Harden sanitize-html allowlist for topic/post bodies (ADR-015 supersedes DOMPurify)
 
 ## Phase 6 — Social Features
 
