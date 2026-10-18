@@ -1,26 +1,29 @@
 # Project State
 
 **Last updated**: 2026-10-18
-**Current phase**: Phase 5 complete — Topics & Posts. Queued before Phase 6: FIX-005 (docs truth-up, this task), FIX-006 (state-docs CI enforcement), FIX-007 (Node 24 LTS upgrade); then Phase 6 (Social Features, TASK-060 list friendships)
+**Current phase**: Phase 5 complete — Topics & Posts. FIX-005 (docs truth-up) and FIX-006 (state-docs CI enforcement) done; next is FIX-007 (Node 24 LTS upgrade), then Phase 6 (Social Features, TASK-060 list friendships)
 
-## Verification (2026-10-18, branch `develop` @ `22de8597`)
+## Verification (2026-10-18, branch `feature/fix-006-state-docs-enforcement`)
 
-- `pnpm test`: 43 suites / 414 tests pass, exit 0 (run on `develop` @ `22de8597`). Jest writes its
-  report to stderr and prints a `worker failed to exit gracefully` warning (a leaked handle/timer
-  in some suite) — cosmetic, it does not change the exit code; hunt it in TASK-081 with `--detectOpenHandles`
-- `pnpm test:e2e`: 2 suites / 3 tests pass, exit 0 (health + auth rate-limit 429 path)
-- `pnpm test:integration`: exit 0, no suites yet ("No tests found, exiting with code 0")
-- `pnpm lint`: clean, exit 0
-- `pnpm exec tsc --noEmit`: clean, exit 0
-- git: TASK-058 and TASK-059 are merged and published on `develop` (@ `22de8597`); no feature branch is open
-- FIX-005 is docs-only: no test, schema, or migration impact
+- No runtime code changed: `pnpm test` (43 suites / 414 tests), `pnpm test:e2e` (2 suites / 3 tests),
+  `pnpm lint` and `pnpm exec tsc --noEmit` are inherited green from `develop` @ `596577ea` (FIX-005)
+  and re-run by CI on this PR; the Jest `worker failed to exit gracefully` warning is unchanged
+- `.github/workflows/ci.yml` parses as valid YAML with the expected five jobs (lint, unit-tests,
+  coverage, integration-e2e-tests, tdd-enforcement)
+- Gate proven RED -> GREEN, not assumed: with this branch's first commit (no `State.md` in the diff)
+  the local mirror of the step exited 1 and the required job `TDD & Migration Enforcement` failed on
+  the PR with `ERROR: State.md was not updated by this PR.`; this State.md section turns it green
+- The same run proves the diff base resolves: the step listed all four changed files instead of
+  passing vacuously on a missing `origin/develop` (the old shallow clone shipped no `origin/develop`)
+- `pnpm db:generate`: no schema change; no migration
 
 ## Current Status
 
-Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) and implemented: src/common/utils/sanitize-html.ts now enforces an explicit allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto — instead of the library defaults. This fixed a real gap: the installed sanitize-html does not allow img by default, so images were stripped entirely, while the defaults also let through div/span/tables/target. No SanitizePipe by design: sanitization lives in the write services (topics/posts create+edit), which also own the sanitized-empty ValidationError. No new dependency and no schema change. FIX-005 then aligned the documentation with that reality (State.md verification block, API.md Topics status, README module tree) and queued FIX-006 (a CI gate that fails a PR when State.md is not updated) and FIX-007 (Node 24 LTS; Node 20 reached EOL on 2026-04-30) before Phase 6 begins.
+Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) and implemented: src/common/utils/sanitize-html.ts now enforces an explicit allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto — instead of the library defaults. This fixed a real gap: the installed sanitize-html does not allow img by default, so images were stripped entirely, while the defaults also let through div/span/tables/target. No SanitizePipe by design: sanitization lives in the write services (topics/posts create+edit), which also own the sanitized-empty ValidationError. No new dependency and no schema change. FIX-005 then aligned the documentation with that reality (State.md verification block, API.md Topics status, README module tree) and queued FIX-006 (a CI gate that fails a PR when State.md is not updated) and FIX-007 (Node 24 LTS; Node 20 reached EOL on 2026-04-30) before Phase 6 begins. FIX-006 then made the journal update enforceable instead of honor-system: the required job `TDD & Migration Enforcement` now fails any PR that does not touch State.md — and a `feature/task-NNN-*` branch must additionally flip its `TASKS.md` checkbox and mention the task in State.md — with the same job switched to a full-history checkout plus an explicit `origin/develop` fetch so the three-dots diffs can no longer pass vacuously.
 
 ## Last Completed
 
+- **FIX-006** — State-docs CI enforcement: the required job `TDD & Migration Enforcement` now fails any PR that does not touch `State.md` (a `feature/task-NNN-*` branch must also flip `- [x] **TASK-NNN**` in `TASKS.md` and mention the task in its `State.md` diff), with `fetch-depth: 0` plus an explicit `origin/develop` fetch and no silent error swallowing on the diff itself; `AGENTS.md`, `BRANCH_PROTECTION.md` and the PR template document the rule and the `(#NN)` squash suffix. Proven RED -> GREEN on PR #59. No code, schema, or dependency change.
 - **FIX-005** — Docs truth-up: State.md verification block now reflects the merged TASK-058/059 (`develop` @ `22de8597`, no open feature branch) and records the queued FIX-006/FIX-007 work; API.md marks Topics fully implemented (Phase 5); README structure adds the `posts/` module and drops the stale "Phase 5, in progress" note. Docs-only: no code, schema, or migration impact.
 - **TASK-059** — Rescope + harden body sanitization: explicit sanitize-html allowlist (img enabled, div/span/tables/target blocked, schemes http/https/mailto) in the shared util, 6 new util tests pinning every acceptance criterion; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency. Phase 5 complete.
 - **TASK-058** — Implement DELETE /posts/:id via PostsService.deletePost (ADR-016 ownership, soft delete, topic replyCount decrement clamped at zero, idempotent 204 without auth check, 404 missing; 408/408 unit, 3/3 e2e, lint + tsc clean, no migration). Phase 5 in progress.
@@ -36,6 +39,7 @@ Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) an
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-18 | FIX-006 | State-docs CI enforcement: every PR must touch State.md; task branches must also flip the TASKS.md checkbox and mention TASK-NNN; full-history checkout + explicit origin/develop fetch; AGENTS.md/template/BRANCH_PROTECTION updated; proven RED -> GREEN on PR #59 — no code or migration |
 | 2026-10-18 | FIX-005 | Docs truth-up: State.md verification block reflects merged TASK-058/059 (`develop` @ `22de8597`) + queued FIX-006/007; API.md Topics → fully implemented (Phase 5); README tree adds `posts/` and drops the stale "Phase 5, in progress" note — docs-only, no code or migration |
 | 2026-10-18 | TASK-059 | Body sanitization hardened: explicit sanitize-html allowlist (img enabled — defaults stripped it; div/span/tables/target blocked; schemes http/https/mailto) replacing library defaults; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency — Phase 5 complete |
 | 2026-10-18 | TASK-058 | DELETE /posts/:id via PostsService.deletePost (ADR-016 ownership, soft delete, topic replyCount decrement clamped at zero, idempotent 204 without auth check, 404 missing); 408/408 unit, 3/3 e2e, lint + tsc clean, no migration — Phase 5 in progress |
@@ -148,3 +152,7 @@ Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) an
 - Body sanitization (TASK-059): `src/common/utils/sanitize-html.ts` pins an explicit sanitize-html allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto; the library defaults differ (img not allowed at all — images were stripped — while div/span/tables/target passed through), so future allowlist changes belong in this one util; b/i are intentionally not allowed (use strong/em); sanitization stays in the services (topics/posts create+edit) which own the sanitized-empty ValidationError — no SanitizePipe by design
 - Jest leaks a handle in some suite (`worker failed to exit gracefully`, printed to stderr); `pnpm test` still exits 0 — investigate with `pnpm test --detectOpenHandles` during TASK-081
 - Jest writes its whole report to stderr: never read a merged stream (`2>&1`) as a failure, and never read `%ERRORLEVEL%` from a single-line `cmd /c "a & echo %ERRORLEVEL%"` (it expands at parse time and reports the *previous* value)
+- Task-completion enforcement (FIX-006): the required job `TDD & Migration Enforcement` fails a PR whose diff does not touch `State.md`; a `feature/task-NNN-*` branch additionally needs `TASKS.md` changed with `- [x] **TASK-NNN**` and `TASK-NNN` mentioned in the `State.md` diff. The job now checks out full history (`fetch-depth: 0`) and fetches `origin/develop`, so the three-dots diffs always resolve; the exact `State.md` sections to refresh are listed in `AGENTS.md` → Task Tracking
+- Squash traceability (FIX-006): keep the automatic `(#NN)` suffix in the squash subject. Editing it in the UI is what stripped `(#56)`/`(#57)` from TASK-058/059; `gh pr merge <n> --squash --subject "<subject> (#NN)"` preserves it
+- Next is FIX-007 (Node 24 LTS): Node 20 reached EOL on 2026-04-30; CI already warns that Node 20 is deprecated for `actions/*` and that `ubuntu-latest` migrates to Ubuntu 26 on 2026-10-19
+- `gh` on this machine is blocked by invalid `GH_TOKEN`/`GITHUB_TOKEN` environment variables; drop them for the command (`Remove-Item Env:GH_TOKEN,Env:GITHUB_TOKEN`) to fall back to the working keyring account (`maucabreradev`, scopes include `repo`)
