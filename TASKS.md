@@ -78,7 +78,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 - [x] **TASK-054** — Implement PATCH /topics/:id/lock (mod/admin)
 - [x] **TASK-055** — Implement POST /posts (create comment)
 - [x] **TASK-056** — Implement GET /posts/:id
-- [ ] **TASK-057** — Implement PATCH /posts/:id (edit post)
+- [x] **TASK-057** — Implement PATCH /posts/:id (edit post)
 - [ ] **TASK-058** — Implement DELETE /posts/:id (soft delete)
 - [ ] **TASK-059** — Implement DOMPurify sanitization for topic/post bodies
 
