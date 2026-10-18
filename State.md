@@ -1,28 +1,28 @@
 # Project State
 
 **Last updated**: 2026-10-18
-**Current phase**: Phase 5 complete — Topics & Posts. FIX-005 (docs truth-up) and FIX-006 (state-docs CI enforcement) done; next is FIX-007 (Node 24 LTS upgrade), then Phase 6 (Social Features, TASK-060 list friendships)
+**Current phase**: Phase 5 complete — Topics & Posts. FIX-005 (docs truth-up), FIX-006 (state-docs CI enforcement) and FIX-007 (Node 24 LTS runtime) done; next is Phase 6 (Social Features, TASK-060 list friendships)
 
-## Verification (2026-10-18, branch `feature/fix-006-state-docs-enforcement`)
+## Verification (2026-10-18, branch `feature/fix-007-node-24`)
 
-- No runtime code changed: `pnpm test` (43 suites / 414 tests), `pnpm test:e2e` (2 suites / 3 tests),
-  `pnpm lint` and `pnpm exec tsc --noEmit` are inherited green from `develop` @ `596577ea` (FIX-005)
-  and re-run by CI on this PR; the Jest `worker failed to exit gracefully` warning is unchanged
-- `.github/workflows/ci.yml` parses as valid YAML with the expected five jobs (lint, unit-tests,
-  coverage, integration-e2e-tests, tdd-enforcement)
-- Gate proven RED -> GREEN, not assumed: with this branch's first commit (no `State.md` in the diff)
-  the local mirror of the step exited 1 and the required job `TDD & Migration Enforcement` failed on
-  the PR with `ERROR: State.md was not updated by this PR.`; this State.md section turns it green
-- The same run proves the diff base resolves: the step listed all four changed files instead of
-  passing vacuously on a missing `origin/develop` (the old shallow clone shipped no `origin/develop`)
+- Ran on the newly pinned runtime: local `fnm` Node v24.22.0 prepended to PATH, so the suites really
+  executed on Node 24 (not on the previous local v22) — `pnpm test` 43 suites / 414 tests exit 0,
+  `pnpm test:e2e` 2 suites / 3 tests exit 0, `pnpm lint` exit 0, `pnpm exec tsc --noEmit` exit 0
+- `pnpm install` on Node 24 exit 0 with the new `engines` field satisfied; lockfile regenerated for
+  `@types/node` 20.19.43 -> 24.19.2 and rides in the same commit, so CI `--frozen-lockfile` stays green
+- `docker manifest inspect node:24-alpine` resolves (the tag exists); Dockerfile (3 stages), all five
+  CI jobs, `.nvmrc` and the README/AGENTS docs now pin 24
 - `pnpm db:generate`: no schema change; no migration
+- Remaining `Node 20` mentions are intentional history: ADR-015 (superseded), the FIX-005/FIX-006
+  journal rows, and `.scratch/tasks/TASK-003-*/TODO.md` (spec of a task built on the old runtime)
 
 ## Current Status
 
-Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) and implemented: src/common/utils/sanitize-html.ts now enforces an explicit allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto — instead of the library defaults. This fixed a real gap: the installed sanitize-html does not allow img by default, so images were stripped entirely, while the defaults also let through div/span/tables/target. No SanitizePipe by design: sanitization lives in the write services (topics/posts create+edit), which also own the sanitized-empty ValidationError. No new dependency and no schema change. FIX-005 then aligned the documentation with that reality (State.md verification block, API.md Topics status, README module tree) and queued FIX-006 (a CI gate that fails a PR when State.md is not updated) and FIX-007 (Node 24 LTS; Node 20 reached EOL on 2026-04-30) before Phase 6 begins. FIX-006 then made the journal update enforceable instead of honor-system: the required job `TDD & Migration Enforcement` now fails any PR that does not touch State.md — and a `feature/task-NNN-*` branch must additionally flip its `TASKS.md` checkbox and mention the task in State.md — with the same job switched to a full-history checkout plus an explicit `origin/develop` fetch so the three-dots diffs can no longer pass vacuously.
+Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) and implemented: src/common/utils/sanitize-html.ts now enforces an explicit allowlist — tags p/br/strong/em/u/s/a/ul/ol/li/blockquote/code/pre/img/h1-h6, attributes a[href] and img[src,alt], schemes http/https/mailto — instead of the library defaults. This fixed a real gap: the installed sanitize-html does not allow img by default, so images were stripped entirely, while the defaults also let through div/span/tables/target. No SanitizePipe by design: sanitization lives in the write services (topics/posts create+edit), which also own the sanitized-empty ValidationError. No new dependency and no schema change. FIX-005 then aligned the documentation with that reality (State.md verification block, API.md Topics status, README module tree) and queued FIX-006 (a CI gate that fails a PR when State.md is not updated) and FIX-007 (Node 24 LTS; Node 20 reached EOL on 2026-04-30) before Phase 6 begins. FIX-006 then made the journal update enforceable instead of honor-system: the required job `TDD & Migration Enforcement` now fails any PR that does not touch State.md — and a `feature/task-NNN-*` branch must additionally flip its `TASKS.md` checkbox and mention the task in State.md — with the same job switched to a full-history checkout plus an explicit `origin/develop` fetch so the three-dots diffs can no longer pass vacuously. FIX-007 then moved the pinned runtime off the EOL Node 20 (support ended 2026-04-30) onto Node 24 LTS: Dockerfile stages, all five CI jobs, `.nvmrc`, `package.json` → `engines: { "node": ">=24 <25" }` and `@types/node` ^24, with the lockfile regenerated in the same commit and the suites re-run on Node 24 locally before pushing (ADR-017 supersedes the ADR-015 Node 20 constraint).
 
 ## Last Completed
 
+- **FIX-007** — Node 24 LTS runtime (ADR-017, supersedes the ADR-015 Node 20 constraint): Dockerfile (3 stages), all five CI jobs, `.nvmrc` (`24`), README prerequisites and the AGENTS runtime/dependency rules moved to Node 24; `package.json` gained `engines: { "node": ">=24 <25" }` and `@types/node` ^24 with the regenerated lockfile in the same commit. Verified on Node 24.22.0 (fnm): 414/414 unit, 3/3 e2e, lint + tsc clean. Node 20 is EOL (2026-04-30) and CI already flagged it as deprecated. No application code or schema change.
 - **FIX-006** — State-docs CI enforcement: the required job `TDD & Migration Enforcement` now fails any PR that does not touch `State.md` (a `feature/task-NNN-*` branch must also flip `- [x] **TASK-NNN**` in `TASKS.md` and mention the task in its `State.md` diff), with `fetch-depth: 0` plus an explicit `origin/develop` fetch and no silent error swallowing on the diff itself; `AGENTS.md`, `BRANCH_PROTECTION.md` and the PR template document the rule and the `(#NN)` squash suffix. Proven RED -> GREEN on PR #59. No code, schema, or dependency change.
 - **FIX-005** — Docs truth-up: State.md verification block now reflects the merged TASK-058/059 (`develop` @ `22de8597`, no open feature branch) and records the queued FIX-006/FIX-007 work; API.md marks Topics fully implemented (Phase 5); README structure adds the `posts/` module and drops the stale "Phase 5, in progress" note. Docs-only: no code, schema, or migration impact.
 - **TASK-059** — Rescope + harden body sanitization: explicit sanitize-html allowlist (img enabled, div/span/tables/target blocked, schemes http/https/mailto) in the shared util, 6 new util tests pinning every acceptance criterion; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency. Phase 5 complete.
@@ -39,6 +39,7 @@ Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) an
 
 | Date | Task | Summary |
 |------|------|---------|
+| 2026-10-18 | FIX-007 | Runtime moved to Node 24 LTS (ADR-017): Dockerfile + all 5 CI jobs + `.nvmrc` + `engines: >=24 <25` + `@types/node` ^24 + regenerated lockfile; verified on local Node 24.22.0 (414 unit / 3 e2e, lint + tsc clean) — no app code or migration |
 | 2026-10-18 | FIX-006 | State-docs CI enforcement: every PR must touch State.md; task branches must also flip the TASKS.md checkbox and mention TASK-NNN; full-history checkout + explicit origin/develop fetch; AGENTS.md/template/BRANCH_PROTECTION updated; proven RED -> GREEN on PR #59 — no code or migration |
 | 2026-10-18 | FIX-005 | Docs truth-up: State.md verification block reflects merged TASK-058/059 (`develop` @ `22de8597`) + queued FIX-006/007; API.md Topics → fully implemented (Phase 5); README tree adds `posts/` and drops the stale "Phase 5, in progress" note — docs-only, no code or migration |
 | 2026-10-18 | TASK-059 | Body sanitization hardened: explicit sanitize-html allowlist (img enabled — defaults stripped it; div/span/tables/target blocked; schemes http/https/mailto) replacing library defaults; 414/414 unit, 3/3 e2e, lint + tsc clean, no migration, no new dependency — Phase 5 complete |
@@ -154,5 +155,6 @@ Phase 5 is complete. TASK-059 was rescoped (DOMPurify stayed out per ADR-015) an
 - Jest writes its whole report to stderr: never read a merged stream (`2>&1`) as a failure, and never read `%ERRORLEVEL%` from a single-line `cmd /c "a & echo %ERRORLEVEL%"` (it expands at parse time and reports the *previous* value)
 - Task-completion enforcement (FIX-006): the required job `TDD & Migration Enforcement` fails a PR whose diff does not touch `State.md`; a `feature/task-NNN-*` branch additionally needs `TASKS.md` changed with `- [x] **TASK-NNN**` and `TASK-NNN` mentioned in the `State.md` diff. The job now checks out full history (`fetch-depth: 0`) and fetches `origin/develop`, so the three-dots diffs always resolve; the exact `State.md` sections to refresh are listed in `AGENTS.md` → Task Tracking
 - Squash traceability (FIX-006): keep the automatic `(#NN)` suffix in the squash subject. Editing it in the UI is what stripped `(#56)`/`(#57)` from TASK-058/059; `gh pr merge <n> --squash --subject "<subject> (#NN)"` preserves it
-- Next is FIX-007 (Node 24 LTS): Node 20 reached EOL on 2026-04-30; CI already warns that Node 20 is deprecated for `actions/*` and that `ubuntu-latest` migrates to Ubuntu 26 on 2026-10-19
+- Runtime pin (FIX-007): Node 24 LTS everywhere (Dockerfile, CI, `.nvmrc`, `engines: >=24 <25`, `@types/node` ^24) and dev machines must match — `fnm use 24` / `nvm use 24`. Node 26 becomes LTS on 2026-10-28 and is deliberately not targeted yet (ADR-017); Node 20 mentions left in ADR-015 and old journal rows are history, not drift
+- Running the suite on a different Node without switching globally: `pnpm` is a standalone install that spawns the `node` from PATH, so prepend fnm's Node 24 dir — `$n24 = fnm exec --using=24 node -p "path.dirname(process.execPath)"; $env:PATH = "$n24;$env:PATH"` — then `pnpm test` really runs on 24
 - `gh` on this machine is blocked by invalid `GH_TOKEN`/`GITHUB_TOKEN` environment variables; drop them for the command (`Remove-Item Env:GH_TOKEN,Env:GITHUB_TOKEN`) to fall back to the working keyring account (`maucabreradev`, scopes include `repo`)

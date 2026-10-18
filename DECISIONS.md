@@ -243,3 +243,19 @@
 - `PATCH` with no provided fields is an idempotent no-op that returns the current state (same convention as `updateForum`/`updateProfile`), so partial-update callers never special-case an empty body
 - Post edit/delete (TASK-057/058) and topic delete (TASK-052) reuse this shape; pin/lock (TASK-053/054) are staff-only and can use `@Roles()` instead of the inline check
 - The author-character join is the single source of ownership, so content edits never trust a client-supplied character id
+
+---
+
+## ADR-017: Node 24 LTS Runtime (Supersedes the Node 20 Constraint from ADR-015)
+
+**Status**: Accepted
+
+**Context**: The project pinned Node 20 in the Dockerfile (all three stages), CI (all five jobs) and the docs, largely because `isomorphic-dompurify` (TASK-050) pulled a `jsdom`/`undici` chain that crashed on Node 20 (ADR-015). That dependency is gone — sanitization now uses `sanitize-html` (ADR-015) — so the constraint is obsolete, while Node 20 itself reached end of life on 2026-04-30 (official `nodejs/Release` schedule) and GitHub warned that Node 20 is deprecated for `actions/*` runners. Local dev machines run a newer Node (v22 on the current dev box), the exact divergence ADR-015 taught us to eliminate: a green local suite proves nothing about the pinned runtime.
+
+**Decision**: Move the pinned runtime to Node 24 (maintenance from 2026-10-20, supported until 2028-04-30). Update the Dockerfile stages, every CI job, `@types/node`, and the docs; add `.nvmrc` and `package.json` → `engines: { "node": ">=24 <25" }` so a dev machine is nudged onto the same major. Node 26 becomes LTS on 2026-10-28 and is deliberately not targeted yet — too new to pin a production runtime to on day one.
+
+**Consequences**:
+- Dev, CI and production run the same non-EOL major; the dependency checklist in `AGENTS.md` now tests against Node 24
+- `pnpm install --frozen-lockfile` keeps working because the `@types/node` bump and the regenerated lockfile ride in the same commit
+- The EOL Node 20 runtime stops being a security liability for a production-bound API
+- Revisit the pin once Node 26 settles, or earlier if a dependency requires it

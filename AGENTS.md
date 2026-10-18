@@ -140,13 +140,13 @@ A task is **NOT** complete until:
 - **Testing**: TDD mandatory — RED → GREEN → REFACTOR for all features and bugfixes
 - **Documentation**: Update relevant docs when changing behavior
 - **Security**: **NEVER** commit passwords, API keys, JWT secrets, database credentials, or any sensitive data to the repository. Use `.env.example` with placeholder values only (e.g., `your-secret-key-change-in-production`). Real credentials must be injected at runtime via environment variables (CI/CD, Docker env_file), Docker secrets, or cloud provider secret managers (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault). `.env` files must be in `.gitignore`. Rotate secrets immediately if accidentally committed.
-- **Runtime**: Dev, CI, and production all run Node 20 (pinned in `Dockerfile` and `.github/workflows/ci.yml`). Every new dependency must support Node 20 — a package working locally on Node 22+ proves nothing.
+- **Runtime**: Dev, CI, and production all run Node 24 (pinned in `Dockerfile`, `.github/workflows/ci.yml`, `.nvmrc` and `package.json` → `engines`). Every new dependency must support Node 24 — a package working locally on a newer Node proves nothing.
 
 ## Adding Dependencies
 
 Before running `pnpm add`, verify the dependency against this checklist:
 
-- **Engines**: Declares support for Node 20 (`engines` field or documented compatibility)
+- **Engines**: Declares support for Node 24 (`engines` field or documented compatibility)
 - **Module format**: CJS preferred. ESM-only packages require Jest allowlist updates (see `TESTING.md` → ESM dependencies under Jest) — avoid them in hot paths
 - **Builds**: No postinstall scripts or native builds. If unavoidable, add to `allowBuilds` in `pnpm-workspace.yaml` (required for `pnpm install --frozen-lockfile` in CI)
 - **Weight**: No `jsdom`, `canvas`, or binary-transitive chains in API runtime code — they break boot on pinned Node and explode suite time (see ADR-015)
