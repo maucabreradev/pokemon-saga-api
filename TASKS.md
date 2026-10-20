@@ -84,7 +84,7 @@ Tasks are organized by phase. Each task lives in `.scratch/tasks/<task-number>-<
 
 ## Phase 6 — Social Features
 
-- [ ] **TASK-060** — Implement GET /friendships (list friends)
+- [x] **TASK-060** — Implement GET /friendships (list friends)
 - [ ] **TASK-061** — Implement POST /friendships/request
 - [ ] **TASK-062** — Implement POST /friendships/:id/accept
 - [ ] **TASK-063** — Implement POST /friendships/:id/reject

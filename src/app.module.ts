@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { CharactersModule } from './characters/characters.module';
 import { DatabaseModule } from './database/database.module';
+import { FriendshipsModule } from './friendships/friendships.module';
 import { ForumsModule } from './forums/forums.module';
 import { HealthModule } from './health/health.module';
 import { PostsModule } from './posts/posts.module';
@@ -33,6 +34,7 @@ import {
     ForumsModule,
     TopicsModule,
     PostsModule,
+    FriendshipsModule,
     applyRateLimiting(),
   ],
   controllers: [],
