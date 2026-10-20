@@ -8,7 +8,9 @@ All endpoints are prefixed with `/api/v1`. Interactive documentation is availabl
   Topics live routes: `GET /topics`, `GET /topics/:id`, `POST /topics`, `PATCH /topics/:id`,
   `DELETE /topics/:id`, `PATCH /topics/:id/pin`, `PATCH /topics/:id/lock`. Posts live routes:
   `POST /posts`, `GET /posts/:id`, `PATCH /posts/:id`, `DELETE /posts/:id`.
-- Planned (spec only, not yet implemented): Friendships, Reactions, Moderation, Admin
+- Partially implemented: Friendships (Phase 6). Live route: `GET /friendships` (list the
+  friendships of the authenticated character, `?status=pending|accepted|blocked`, `?page`, `?limit`).
+- Planned (spec only, not yet implemented): the rest of Friendships, Reactions, Moderation, Admin
   (Phase 6+). The module tables below describe the full target contract, not the current state.
   Swagger UI reflects only implemented routes.
 

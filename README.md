@@ -49,6 +49,7 @@ src/
 ├── forums/           # Categories, forums, visibility rules
 ├── topics/           # Topics (list, detail, create, edit, delete, pin, lock)
 ├── posts/            # Posts and replies (create, detail, edit, delete)
+├── friendships/      # Friendships (list)
 ├── health/           # Health check
 ├── database/         # Drizzle schema + migrations (seeds: Phase 11, ADR-007)
 ├── common/           # Shared DTOs, exceptions, filters, pipes, utils
