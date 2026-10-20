@@ -55,7 +55,9 @@ describe('FriendshipsService', () => {
     publicName: string,
     friendshipCreatedAt: string,
     avatarUrl: string | null = null,
+    id = `friendship-id-${readableId}`,
   ) => ({
+    id,
     readableId,
     publicName,
     avatarUrl,
@@ -152,12 +154,14 @@ describe('FriendshipsService', () => {
       // Assert
       expect(result).toEqual([
         {
+          id: 'friendship-id-NewFriend222',
           readableId: 'NewFriend222',
           publicName: 'Charmander',
           avatarUrl: null,
           friendshipCreatedAt: new Date('2026-10-15T00:00:00.000Z'),
         },
         {
+          id: 'friendship-id-OldFriend111',
           readableId: 'OldFriend111',
           publicName: 'Bulbasaur',
           avatarUrl: null,
@@ -186,6 +190,19 @@ describe('FriendshipsService', () => {
       expect(result[0].avatarUrl).toBe('https://example.com/a.png');
     });
 
+    it('should expose the friendship id so a pending request can be acted on', async () => {
+      // Arrange
+      const rows = [friendRow('Friend111', 'Bulbasaur', '2026-10-15T00:00:00.000Z')];
+      const { dbMock } = createDbMock([[characterRow], rows, []]);
+      const service = createService(dbMock);
+
+      // Act
+      const result = await service.listFriendships('user-id-1', { page: 1, limit: 20 });
+
+      // Assert
+      expect(result[0].id).toBe('friendship-id-Friend111');
+    });
+
     it('should apply pagination after merging', async () => {
       // Arrange
       const requesterRows = [
@@ -202,12 +219,54 @@ describe('FriendshipsService', () => {
       // Assert
       expect(result).toEqual([
         {
+          id: 'friendship-id-Friend111',
           readableId: 'Friend111',
           publicName: 'Bulbasaur',
           avatarUrl: null,
           friendshipCreatedAt: new Date('2026-10-10T00:00:00.000Z'),
         },
       ]);
+    });
+
+    it('should bound each direction query to the rows the requested page can reach', async () => {
+      // Arrange: fetching only page * limit rows per direction is exact, because every row
+      // of the merged top-N also belongs to the top-N of its own direction.
+      const { dbMock, chains } = createDbMock([[characterRow], [], []]);
+      const service = createService(dbMock);
+
+      // Act
+      await service.listFriendships('user-id-1', { page: 3, limit: 20 });
+
+      // Assert
+      expect(chains[1].limit).toHaveBeenCalledWith(60);
+      expect(chains[2].limit).toHaveBeenCalledWith(60);
+    });
+
+    it('should bound the blocked direction query as well', async () => {
+      // Arrange
+      const { dbMock, chains } = createDbMock([[characterRow], []]);
+      const service = createService(dbMock);
+
+      // Act
+      await service.listFriendships('user-id-1', { page: 2, limit: 10, status: 'blocked' });
+
+      // Assert
+      expect(chains[1].limit).toHaveBeenCalledWith(20);
+    });
+
+    it('should not list the same friendship twice when both directions match', async () => {
+      // Arrange: a row where requester and addressee are the same character matches both
+      // direction queries, so the merge has to deduplicate by friendship id.
+      const rows = [friendRow('Friend111', 'Bulbasaur', '2026-10-15T00:00:00.000Z')];
+      const { dbMock } = createDbMock([[characterRow], rows, rows]);
+      const service = createService(dbMock);
+
+      // Act
+      const result = await service.listFriendships('user-id-1', { page: 1, limit: 20 });
+
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('friendship-id-Friend111');
     });
 
     it('should return an empty array when the character has no friendships', async () => {

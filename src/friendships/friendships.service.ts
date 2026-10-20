@@ -8,6 +8,7 @@ import { friendships } from '../database/schema/friendships';
 import { ListFriendshipsQueryDto } from './dto/list-friendships-query.dto';
 
 export interface FriendshipSummary {
+  id: string;
   readableId: string;
   publicName: string;
   avatarUrl: string | null;
@@ -41,8 +42,16 @@ export class FriendshipsService {
     }
 
     const status = query.status ?? 'accepted';
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    // Each direction only needs the rows the requested page can reach: every row of the
+    // merged top-N also belongs to the top-N of its own direction, so the bound is exact
+    // and the query stops reading the whole friend list.
+    const reachable = page * limit;
 
     const friendSelection = {
+      id: friendships.id,
       readableId: characters.readableId,
       publicName: characters.publicName,
       avatarUrl: charactersProfile.avatarUrl,
@@ -62,7 +71,8 @@ export class FriendshipsService {
           isNull(characters.deletedAt),
         ),
       )
-      .orderBy(desc(friendships.createdAt));
+      .orderBy(desc(friendships.createdAt))
+      .limit(reachable);
 
     // A blocked row only belongs in "who I blocked": the addressee direction would
     // expose the characters that blocked the caller, which is not the caller's list.
@@ -82,12 +92,18 @@ export class FriendshipsService {
                 isNull(characters.deletedAt),
               ),
             )
-            .orderBy(desc(friendships.createdAt));
+            .orderBy(desc(friendships.createdAt))
+            .limit(reachable);
 
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
+    // A self-pair would match both directions, so the merge deduplicates by friendship id.
+    const unique = new Map<string, FriendshipSummary>();
+    for (const friendship of [...asRequester, ...asAddressee]) {
+      if (!unique.has(friendship.id)) {
+        unique.set(friendship.id, friendship);
+      }
+    }
 
-    return [...asRequester, ...asAddressee]
+    return [...unique.values()]
       .sort((a, b) => b.friendshipCreatedAt.getTime() - a.friendshipCreatedAt.getTime())
       .slice((page - 1) * limit, page * limit);
   }

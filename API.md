@@ -24,6 +24,25 @@ Authorization: Bearer <access_token>
 
 Tokens are obtained via `POST /api/v1/auth/login` and refreshed via `POST /api/v1/auth/refresh`.
 
+## Response Format
+
+Every response goes through the global `ResponseInterceptor`, so the payload is always
+wrapped in an envelope:
+
+```json
+{
+  "data": { "...": "the endpoint payload" },
+  "meta": {
+    "timestamp": "2026-10-20T00:00:00.000Z",
+    "path": "/api/v1/...",
+    "duration": "3ms"
+  }
+}
+```
+
+`data` holds the array or object the endpoint returns. The Swagger examples below show
+the `data` content only.
+
 ---
 
 ## Auth Module
@@ -117,6 +136,31 @@ Tokens are obtained via `POST /api/v1/auth/login` and refreshed via `POST /api/v
 | POST | `/friendships/:id/reject` | Reject friend request | Character |
 | DELETE | `/friendships/:id` | Remove friend | Character |
 | POST | `/friendships/:id/block` | Block character | Character |
+
+### GET /friendships
+
+Lists the friendships of the authenticated character (the main-first active character).
+The `status` filter defaults to `accepted` and also accepts `pending` and `blocked`; a
+`blocked` row only lists the characters the caller blocked, never the ones who blocked
+the caller. `page` and `limit` paginate the merged result.
+
+Query parameters: `status` (`pending` | `accepted` | `blocked`), `page` (default 1),
+`limit` (default 20, max 100).
+
+Each entry exposes the friendship `id`, so a `pending` request can be acted on with
+`POST /friendships/:id/accept` or `POST /friendships/:id/reject`.
+
+```json
+[
+  {
+    "id": "66666666-6666-4666-8666-666666666666",
+    "readableId": "GreenAppleHunter123",
+    "publicName": "Pikachu",
+    "avatarUrl": "https://example.com/avatar.png",
+    "friendshipCreatedAt": "2026-10-20T00:00:00.000Z"
+  }
+]
+```
 
 ---
 
